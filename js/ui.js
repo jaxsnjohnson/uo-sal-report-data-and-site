@@ -2,7 +2,9 @@ export const $ = id => document.getElementById(id);
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 export const currency = value => value == null ? 'Unavailable' : new Intl.NumberFormat('en-US', {style:'currency',currency:'USD',maximumFractionDigits:2}).format(value);
 export const dateLabel = value => new Date(`${value}T12:00:00Z`).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
-export const periodLabel = report => report.kind === 'census' ? dateLabel(report.endDate) : `FY ${report.endDate.slice(0,4)} · July ${report.startDate.slice(0,4)}–June ${report.endDate.slice(0,4)}`;
+export const periodLabel = report => report.kind === 'fiscal'
+  ? `FY ${report.endDate.slice(0,4)} · July ${report.startDate.slice(0,4)}–June ${report.endDate.slice(0,4)}`
+  : report.startDate === report.endDate ? dateLabel(report.endDate) : `${dateLabel(report.startDate)}–${dateLabel(report.endDate)}`;
 export async function getJSON(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`Could not load ${path} (HTTP ${response.status}).`);

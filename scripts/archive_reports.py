@@ -23,10 +23,11 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
 
 
-def write_json(path, value):
+def write_json(path, value, compact=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + '.tmp')
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=None if compact else 2,
+                                    separators=(',', ':') if compact else None) + '\n')
     temporary.replace(path)
 
 

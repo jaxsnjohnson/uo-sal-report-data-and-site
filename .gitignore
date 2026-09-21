@@ -7,3 +7,8 @@ node_modules/
 temp_txt/
 test-results/
 data.json
+# Keep the user-supplied download locally; checksummed member PDFs are preserved.
+/OneDrive_*.zip
+# Reproducible Poppler extraction; originals and text checksums are tracked.
+/reports/text/
+/_site/

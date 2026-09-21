@@ -1,0 +1,49 @@
+name: Publish UO Salary Transparency
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source and preserved reports
+        uses: actions/checkout@v6
+      - name: Validate the importer and search
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          node --test tests/search.test.mjs
+      - name: Rebuild and verify committed data
+        run: |
+          python3 scripts/build_data.py --require-data
+          git diff --exit-code -- records.json data
+      - name: Package public website files
+        run: python3 scripts/package_site.py --output _site
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4

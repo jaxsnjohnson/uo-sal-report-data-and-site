@@ -146,5 +146,31 @@ class PipelineTests(unittest.TestCase):
         self.write();(self.root/'report_imports.json').write_text('["records.json"]')
         with self.assertRaises(ValueError):build(self.root)
 
+    def test_mixed_terms_keep_separate_measures_and_aggregates(self):
+        self.document.update(schemaVersion=2, measure='mixed', measures=['academic_year_rate', 'annual_rate'],
+                             amountDefinitions={'annual_rate': 'Twelve-month test rate', 'academic_year_rate': 'Nine-month test rate'})
+        self.document['records'][0]['measure']='annual_rate'
+        self.document['records'].append(dict(self.document['records'][0], sourceRow=2, measure='academic_year_rate', amount='45000'))
+        self.document['review']['expectedRowCount']=2
+        self.write(); result=build(self.root)
+        self.assertEqual({r['measure'] for r in result['records']},{'annual_rate','academic_year_rate'})
+        aggregates=json.loads((self.root/'data/aggregates.json').read_text())
+        self.assertEqual({r['measure']:r['median'] for r in aggregates['reports']}, {'annual_rate':60000,'academic_year_rate':45000})
+
+    def test_shards_have_versions_source_links_and_stale_cleanup(self):
+        self.write(); result=build(self.root, shard_threshold=0)
+        self.assertTrue(result['sharded']);self.assertEqual(result['records'],[])
+        self.assertEqual(result['recordCount'],1)
+        report=result['reports'][0]
+        part=json.loads((self.root/report['dataFile']).read_text())
+        self.assertEqual(part['version'],result['version'])
+        row=part['records'][0]
+        history=self.root/f"data/people/{row['profileId'][:2]}.json"
+        self.assertEqual(json.loads(history.read_text())['people'][row['profileId']][0]['sourcePage'],1)
+        (self.root/'report_imports.json').write_text('[]')
+        build(self.root)
+        self.assertFalse(history.exists())
+        self.assertFalse((self.root/report['dataFile']).exists())
+
 
 if __name__=='__main__':unittest.main()

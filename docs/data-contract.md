@@ -1,97 +1,110 @@
-# UO import contract (version 1)
+# UO import contract (versions 1 and 2)
 
-The official catalog is available, but its linked PDFs could not be retrieved
-anonymously during initial setup. **An automated UO PDF parser is not yet
-implemented or validated.** Do not reuse OSU's PDF regular expressions or salary
-conversions. Inspect the downloaded UO reports, including headers and footnotes,
-before writing that adapter. The builder below is ready for reviewed observations.
+The inspected SharePoint PDF layouts are supported by `scripts/parse_reports.py`.
+See [import-report.md](import-report.md) for actual coverage and audit results.
 
 ## Source preservation
 
-The 12 current report IDs are in `records.json`. Preserve a downloaded original:
+`scripts/ingest_sharepoint.py` validates ZIP paths, duplicate members, PDF
+signatures, and CRCs before extraction. Originals retain the supplied folder
+structure and filenames under `reports/sharepoint/Salary Reports/{Fall,FY,Other}/`.
+Different existing bytes are never overwritten. The original ZIP stays at its
+local path and is ignored by Git.
 
-```sh
-python3 scripts/archive_reports.py add 2025-census-classified /path/to/report.pdf
-```
+`reports/sharepoint-manifest.json` records ZIP/member SHA-256 checksums, sizes,
+physical PDF page counts, and extracted-text checksums. The official index HTML
+capture remains separately preserved. SharePoint provenance comes from the
+user's account of the download; this import did not authenticate to SharePoint.
 
-This copies the bytes to `reports/2025-census-classified.pdf`, validates the PDF
-signature, records a SHA-256 checksum, and refuses to overwrite different bytes.
-Check that the PDF is the indicated report; the signature check cannot establish
-its period or completeness. Archive attachment is not authorization to import it.
+`records.json` links all originals, including the 12 reports previously listed
+in the official index capture. Dates come from PDF headings, not filenames.
+Fall reports use `kind: census`; newer FY actual-pay reports use `kind: fiscal`;
+older FY rate reports and Other reports use `kind: historical`. Original
+`sourceSeries` folder names are retained separately.
 
-Use `pdftotext -layout reports/2025-census-classified.pdf temp_txt/report.txt` after
-creating `temp_txt/`. Also inspect rendered PDF pages and reconcile parsed rows
-against page totals. No OCR or layout inference is currently performed.
+Extracted `reports/text/<report-id>.txt` files are local, reproducible
+intermediates ignored by Git. Their checksums remain in the manifest. Original
+PDFs and extracted text retain the source layout without manual text edits.
 
-## Normalized report
+## Normalized observations
 
-Each reviewed report becomes `normalized/<report-id>.json`. Add its relative path
-to `report_imports.json` to select it for the build. This **invented structural
-example is not UO data** and is not shipped in the explorer:
+`normalized/<report-id>.json` retains every personnel block. `report_imports.json`
+selects the files for the build. Unknown layouts fail the parser and are recorded
+in `data/extraction-audit.json` rather than silently skipped.
 
-```json
-{
-  "schemaVersion": 1,
-  "reportId": "2025-census-classified",
-  "measure": "annual_rate",
-  "amountDefinition": "Replace with the verified meaning of UO's amount column.",
-  "review": {
-    "sourceSha256": "Replace with the checksum from records.json",
-    "reviewedBy": "Reviewer name",
-    "notes": "Document column definitions, exclusions and row reconciliation.",
-    "expectedRowCount": 1
-  },
-  "records": [
-    {
-      "name": "Example, Alex",
-      "title": "Example role",
-      "department": "Example department",
-      "amount": "60,000.00",
-      "fte": "1.0",
-      "sourcePage": 1,
-      "sourceRow": 1
-    }
-  ]
-}
-```
+Version 1 supports a single measure per report. Version 2 adds:
 
-- `sourceRow` is a unique, one-based row number across the complete report;
-  `sourcePage` is the one-based PDF page, including any cover page.
-- Amounts retain source text. Missing amounts are null or blank. Invalid text
-  fails the build. No annualization or FTE multiplication is performed.
-- FTE is an optional fraction, not percent. Preserve the original PDF and
-  document any required transcription conversion. Never invent missing FTE.
-- Census measures: `annual_rate`, `academic_year_rate`, `monthly_rate`,
-  `hourly_rate`. Fiscal reports must use `fiscal_year_pay`.
-- One normalized report has one reviewed amount definition. If a PDF mixes units,
-  stop and extend this contract to support explicitly reviewed per-row measures
-  before importing it; never coerce mixed units into one measure.
-- An optional `profileKey` can link observations, including multiple appointments,
-  across reports. Add `review.identityMethod` to explain the evidence. Use an
-  opaque, non-sensitive linkage key; never put SSNs or private identifiers here.
-  Missing keys generate report-row-specific profiles. Names are never auto-joined.
-- Keep reports, raw values, original pages, and review notes even if a row's pay is
-  unusable. Do not silently discard unknown rows to make the build pass.
+- `measures`: sorted list of the report's per-row measures.
+- `measure`: the sole measure or `mixed` when multiple measures occur.
+- `amountDefinitions`: definition keyed by measure.
+- Per-row `measure`, `termOfService`, `appointmentPercent`, `sourceLine`, and
+  `rawFields` containing every printed labelled field.
+- `review.textSha256` and `review.pageReconciliation` alongside the existing
+  PDF checksum, reviewer/method description, notes, and expected row count.
+
+Each record has `name`, `title`, `department`, `amount`, `fte`, `sourcePage`, and
+`sourceRow`. Pages are physical one-based PDF pages including covers; rows are
+unique one-based personnel-block numbers across the report. `sourceLine` locates
+the name on the extracted page. Wrapped titles retain newlines in `rawFields`;
+the display title joins their lines with spaces.
+
+## Pay definitions and transformations
+
+- `amount` retains the printed dollar string. Numeric conversion does not alter
+  units or multiply by FTE. Invalid money text fails the build.
+- UO ANNUAL SALARY RATE is the full-time amount for the entire term of service.
+  TERM OF SVC 9 maps to `academic_year_rate`; 12 maps to `annual_rate`. Unknown
+  terms would be retained as `other_term_rate` and excluded from rate statistics.
+  All imported rate rows have verified 9- or 12-month terms.
+- TOTAL PAY maps to `fiscal_year_pay`: actual pay per position and home/pay or
+  timesheet department combination. Older FY files contain rates; folder name
+  alone never establishes the pay measure.
+- APPT PERCENT is divided by 100 to obtain FTE; the printed percentage is also
+  retained. Actual-pay reports have no such column, so their FTE stays null.
+- `department` uses PAY DEPARTMENT or TMSHT DEPARTMENT. A leading six-digit org
+  code is omitted from the display name but retained in `rawFields`. HOME
+  DEPARTMENT stays separate and is never substituted.
+- Multiple jobs, identical printed blocks, leave, terminated positions, zero pay,
+  and negative adjustments are retained. Zero/negative rates are excluded from
+  rate statistics; actual pay includes its zero/negative reported amounts.
+- Names are never automatically joined. Optional `profileKey` linkage requires
+  a documented `review.identityMethod`. This import uses source-row profiles.
+- `reviewedBy` describes automated checks and representative visual review.
+  It does not claim human approval or manual verification of every record.
+
+## Reconciliation
+
+The parser requires expected fields, rejects unexplained nonblank lines,
+recognizes observed title continuations, and reconciles each data page's JOB TYPE
+markers and pay fields. Full labelled fields remain in normalized records.
+
+`scripts/audit_sources.py` performs a second `pdftotext -raw` pass on every PDF.
+Every page's job count and exact amount sequence must match the normalized data,
+as must each rate's appointment-percent and term sequence. Results are saved to
+`data/source-audit.json`. Both passes use Poppler: separate extraction order is
+not independent software or manual review.
 
 ## Browser artifacts
 
-Run `./convert_data.sh`. It produces `data/index.json` (summary observations and
-coverage), `data/search-index.json`, `data/aggregates.json`, `data/import-audit.json`,
-and 16 `data/people/<hex>.json` history buckets. Index and search operate on source
-observations, not inferred headcounts. The worker receives the loaded summary;
-the separate search index is also available for independent consumers.
+`./convert_data.sh --require-data` validates checksums, review metadata, row
+counts, source locations, numeric values, kinds, and measures. All output files
+share a deterministic content-derived version.
 
-Every artifact has a shared content-derived version. History loads reject mixed
-versions, and a rebuild clears stale bucket content. No giant combined file is
-required. Builds are deterministic and use Python's standard library.
+For more than 10,000 observations:
 
-`./convert_data.sh --require-data` intentionally fails while no reports are
-imported. Use this readiness check before a data-bearing production release.
+- `data/index.json` is a version-2 manifest with `recordCount`, reports, measures,
+  `sharded: true`, and an empty `records` array.
+- Each imported report's `dataFile` points to `data/reports/<report-id>.json`.
+  The browser loads only reports for the selected kind/date; each part includes
+  the shared version and report ID.
+- `data/search-index.json` lists report-part paths for independent consumers.
+- `data/aggregates.json` has one entry per report and measure, keeping 9-month
+  and 12-month rates out of the same median.
+- `data/people/<two-hex-digits>.json` provides lazy-loaded details in 256 buckets.
+  Full raw fields remain in normalized files instead of browser downloads.
+- `data/import-audit.json` records import coverage and source checksums.
 
-## Next adapter verification
-
-Inspect all four families (classified/unclassified × census/fiscal), and test
-multiple years if formats changed. Reconcile row counts, wrapped names and titles,
-Unicode, multi-appointment rows, missing values, zeros, negative adjustments,
-duplicate names, page boundaries, and pay units against original PDF pages.
-Add real-format fixtures only once those source files are available.
+Small fixtures retain inline records and 16 history buckets. Rebuilds clear stale
+report parts and history buckets. The browser rejects mixed-version parts,
+ignores stale responses, and bounds its part caches. No ingestion step publishes
+or pushes the repository.

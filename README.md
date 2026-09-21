@@ -7,16 +7,38 @@ GPL-3.0; see [ATTRIBUTION.md](ATTRIBUTION.md) and [LICENSE](LICENSE).
 
 ## Current status
 
-The UO interface and data pipeline foundation are implemented. The archived
-[official UO catalog](https://data.uoregon.edu/employees/salary-reports) lists 12
-reports: classified and unclassified fall census 2023–2025, plus fiscal years
-2024–2026. Its SharePoint PDFs returned HTTP 403 in this environment. **No real
-salary rows have been imported.** The site displays an explicit pending state,
-never demonstration people or invented statistics.
+The user-supplied `OneDrive_2026-09-21.zip` has been preserved and processed:
+**93 original PDFs, 65,390 pages, and 353,333 job records**, covering June 2009
+through June 2026. All 93 reports are available in the local explorer and source
+archive. See [the ingestion report](docs/import-report.md) for coverage, checks,
+and source limitations. These are job observations, not unique employee counts.
 
-The PDF parser will be implemented after the actual UO files are provided and
-their layouts and pay definitions can be checked. The existing build accepts
-reviewed normalized observations; it is not a claim that UO PDFs already parse.
+The source PDFs distinguish full-time **9-month and 12-month salary rates** from
+**actual fiscal-year pay**. FY 2014–15 through 2018–19 files contain rates; actual
+pay files begin with FY 2020–21. FY 2019–20 is absent from this download.
+No names are automatically joined, pay annualized, or missing reports filled in.
+
+## Reproduce the archive and import
+
+The ZIP stays at its original local path and is ignored by Git. Original PDF
+members retain the SharePoint folder structure and filenames. The tracked
+manifest records the ZIP/member SHA-256 checksums; extracted text is reproducible
+and ignored by Git. Requires Python 3 and Poppler (`pdftotext`, `pdfinfo`).
+
+```sh
+python3 scripts/ingest_sharepoint.py OneDrive_2026-09-21.zip
+python3 scripts/parse_reports.py
+python3 scripts/audit_sources.py
+./convert_data.sh --require-data
+```
+
+Original bytes are never replaced. The parser retains every labelled source
+field in `normalized/`, including job status, appointment percent, term of
+service, home/pay departments, and source page/row. It rejects unknown layouts.
+The independent raw-order extraction check reconciles page counts, personnel
+markers, amount sequences, and rate percentages/terms against the normalized
+records. This is automated validation with representative visual review, not a
+manual check of every record.
 
 ## Preview and checks
 
@@ -55,7 +77,7 @@ python3 scripts/archive_reports.py add 2025-census-classified /path/to/uo-report
 
 The PDF becomes available in the source archive but does not become salary data
 until parsed and reviewed. See [docs/data-contract.md](docs/data-contract.md) for
-the reviewed import schema and remaining parser work.
+the import schema and source-specific parser rules.
 
 To refresh the official index or retry its public report links:
 
@@ -86,7 +108,7 @@ Rows are not verified headcounts. No automatic name merging, pay annualization,
 FTE multiplication, inflation adjustment, or OSU-specific union assumptions are
 used. See [methodology.html](methodology.html).
 
-The **Advanced** area holds the report period, pay measure, fiscal-year toggle,
+The **Advanced** area holds the report series, period, pay measure,
 classification, pay range, full-time and data-flag filters. The question-mark
 button opens the OSU-style About modal and source/methodology links.
 
@@ -113,9 +135,12 @@ index.html, css/, js/       Static explorer
 records.html, records.json Official report catalog and archive
 methodology.html           Public definitions and limits
 reports/                   Original PDFs and dated catalog captures
-normalized/                Reviewed source transcriptions, when available
-report_imports.json        Explicit import selection (currently empty)
+normalized/                One source-preserving JSON file per report
+report_imports.json        Explicit selection of all 93 normalized reports
 scripts/archive_reports.py Source preservation and catalog discovery
+scripts/ingest_sharepoint.py ZIP validation, preservation, dates, and inventory
+scripts/parse_reports.py   Label-based PDF personnel-block parser
+scripts/audit_sources.py   Independent raw-order PDF reconciliation
 scripts/build_data.py      Validated, deterministic artifact generator
 data/                      Generated summaries, histories and audit
 tests/                     Data contract, search and browser checks
@@ -123,8 +148,25 @@ tests/                     Data contract, search and browser checks
 
 ## Hosting
 
-This is a static repository suitable for GitHub Pages or another static host.
-`.nojekyll` is included. No custom domain, analytics, or deployment is configured
-yet. Before publishing salary data, import and verify the real reports,
-run `./convert_data.sh --require-data`, and run the tests. Relative paths support
-both a project subpath and a custom domain.
+The public site is [uo.oregonhigheredsalaries.org](https://uo.oregonhigheredsalaries.org/).
+GitHub Pages publishes `main` through `.github/workflows/pages.yml`, retaining the
+repository's custom domain in `CNAME`. Every push runs pipeline/search tests,
+rebuilds the data, checks that committed artifacts match, and packages the public
+HTML, CSS, JavaScript, data, and original PDFs.
+
+`scripts/package_site.py` excludes the original ZIP, extracted text, normalized
+processing files, tests, and scripts from deployment. Those source and processing
+materials remain in the repository or their documented local archive locations.
+The public package is checked against the Pages size limit before upload.
+
+To validate the same package locally, choose a new empty output directory:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_*.py'
+node --test tests/search.test.mjs
+./convert_data.sh --require-data
+python3 scripts/package_site.py --output /tmp/uo-public-preview
+```
+
+Read [the ingestion report](docs/import-report.md) for source limitations.
+Relative paths support both a project subpath and the custom domain.

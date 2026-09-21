@@ -80,7 +80,7 @@
 
     <div id="foia-notice" class="foia-banner">
         <div class="foia-content">
-            <strong>⚠️ Data Record Update:</strong> UO's official salary report links are cataloged. Downloaded source files are needed before salary records can be imported.
+            <strong>Archive coverage:</strong> The supplied download includes reports from 2009–2026. FY 2019–20 reports are missing from this collection.
             <a href="records.html">Browse the original UO salary reports here</a>.
         </div>
         <button class="close-banner" onclick="document.getElementById('foia-notice').remove()" aria-label="Dismiss notification">&times;</button>
@@ -209,10 +209,11 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap;">
-                    <label class="toggle-container" style="display: flex; align-items: center; cursor: pointer; user-select: none; background: #333; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; flex: 1; justify-content: center; min-width: 200px;" data-tooltip="Switch between November census salary rates and fiscal-year actual pay. These series are never combined.">
-                        <input type="checkbox" id="fiscal-toggle" style="margin-right: 8px;">
-                        Fiscal-Year Actual Pay
-                    </label>
+                    <select id="report-series" class="filter-input" aria-label="Report series" style="flex: 1; min-width: 200px;">
+                        <option value="census">Fall census salary rates</option>
+                        <option value="fiscal">Fiscal-year actual pay</option>
+                        <option value="historical">Earlier personnel lists (rates)</option>
+                    </select>
 
                     <label class="toggle-container" style="display: flex; align-items: center; cursor: pointer; user-select: none; background: #333; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; flex: 1; justify-content: center; min-width: 200px;" data-tooltip="Only show 1.0 FTE appointments (>= 100% Appt Percent).">
                         <input type="checkbox" id="fte-toggle" style="margin-right: 8px;">
@@ -256,9 +257,9 @@
         <h2 id="info-title">About UO Salary Transparency</h2>
         <p class="subtitle">Democratizing access to public records.</p>
         <div class="modal-section"><h3>Why this exists</h3><p>Public salary reports should be accessible. This independent project makes University of Oregon reports searchable, with original sources attached to every observation.</p></div>
-        <div class="modal-section warning-box"><h3>⚠️ Data Disclaimer</h3><p>Official UO report links are preserved, but salary files have not yet been imported. Verify any imported amount against its source PDF.</p><p>Report rows are not verified headcounts. Census salary rates and fiscal-year actual pay are separate measures.</p></div>
+        <div class="modal-section warning-box"><h3>Data sources and limits</h3><p>The supplied SharePoint archive contains 93 preserved PDFs and 353,333 imported job records. Extraction was checked on every page; individual rows have not all been manually verified. Verify amounts against their linked source PDFs.</p><p>Report rows are not verified headcounts. Nine-month rates, twelve-month rates, and fiscal-year actual pay remain separate.</p></div>
         <div class="modal-section"><h3>Methodology</h3><ul><li>Original PDFs are preserved with checksums before import.</li><li>Pay stays in its reported units; no annualization or FTE multiplication is guessed.</li><li>Records are linked across reports only through an explicitly reviewed identity key.</li><li>Years of service cannot be calculated without verified hire dates.</li></ul><a href="methodology.html" class="link-btn">Read the Methodology</a></div>
-        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Report Periods &amp; Pay Measures</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Use Advanced to select the report period and pay measure. The Fiscal-Year Actual Pay checkbox switches series. Leaving it unchecked selects November census rates.</p><p>Changing period or pay measure changes the population being compared. Full-time means a reported appointment FTE of at least 1.0.</p></div></div>
+        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Report Periods &amp; Pay Measures</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Use Advanced to select the report period and pay measure. The report-series selector separates fall census rates, fiscal-year actual pay, and earlier personnel lists. Older fiscal-year personnel lists report rates, not actual earnings.</p><p>Changing period or pay measure changes the population being compared. Full-time means a reported appointment FTE of at least 1.0.</p></div></div>
         <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Data Archives</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Inspect official links, preserved PDFs, and import status.<br><a href="records.html" class="link-btn">Browse Raw Reports</a></p></div></div>
         <div class="modal-section"><h3>Original Sources</h3><p><a href="https://data.uoregon.edu/employees/salary-reports" target="_blank" rel="noopener">Official UO salary reports</a></p><p>This site has no analytics. Searches run in your browser.</p></div>
         <div class="modal-section"><h3>Keyboard Shortcuts</h3><ul><li><strong>/</strong> Focus search</li><li><strong>Esc</strong> Close this window or clear search</li><li><strong>Enter / Space</strong> Expand a focused record</li></ul></div>
