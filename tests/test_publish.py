@@ -44,6 +44,25 @@ class PublicationTests(unittest.TestCase):
             package(self.root, self.output)
         self.assertFalse(self.output.exists())
 
+    def test_versions_entry_points_modules_and_worker_without_changing_sources(self):
+        (self.root / 'js').mkdir()
+        (self.root / 'css').mkdir()
+        html = '<link href="css/site.css"><script src="js/app.js"></script>'
+        script = "import './ui.js'; new URL('./worker.js', import.meta.url);"
+        (self.root / 'index.html').write_text(html)
+        (self.root / 'js/app.js').write_text(script)
+        (self.root / 'js/ui.js').write_text('export const value = 1;')
+        (self.root / 'js/worker.js').write_text("import './ui.js';")
+        (self.root / 'css/site.css').write_text('body { color: green; }')
+        result = package(self.root, self.output)
+        version = result['assetVersion']
+        self.assertIn(f'css/site.css?v={version}', (self.output / 'index.html').read_text())
+        self.assertIn(f'js/app.js?v={version}', (self.output / 'index.html').read_text())
+        self.assertIn(f'./ui.js?v={version}', (self.output / 'js/app.js').read_text())
+        self.assertIn(f'./worker.js?v={version}', (self.output / 'js/app.js').read_text())
+        self.assertEqual((self.root / 'index.html').read_text(), html)
+        self.assertEqual((self.root / 'js/app.js').read_text(), script)
+
     def test_existing_output_and_symlinks_are_rejected(self):
         self.output.mkdir()
         (self.output / 'keep.txt').write_text('Preserve')

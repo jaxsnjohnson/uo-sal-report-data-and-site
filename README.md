@@ -158,6 +158,9 @@ HTML, CSS, JavaScript, data, and original PDFs.
 processing files, tests, and scripts from deployment. Those source and processing
 materials remain in the repository or their documented local archive locations.
 The public package is checked against the Pages size limit before upload.
+CSS and JavaScript entry points, module imports, and workers receive a shared
+content-derived version in their URLs so the custom-domain cache cannot mix
+files from different releases.
 
 To validate the same package locally, choose a new empty output directory:
 

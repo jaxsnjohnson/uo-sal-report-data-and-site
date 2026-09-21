@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Package only public website assets for GitHub Pages, retaining source PDFs."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,12 +41,31 @@ def package(root, destination):
         for key in ('file', 'dataFile'):
             if report.get(key) and report[key] not in relative:
                 raise ValueError(f'Missing published report asset: {report[key]}')
+    # The custom domain's CDN can cache CSS/JS for hours. Version the entry
+    # points and their module/worker imports together so new HTML is coherent.
+    digest = hashlib.sha256()
+    for path in sorted(files):
+        if path.suffix in ('.css', '.js'):
+            digest.update(path.relative_to(root).as_posix().encode())
+            digest.update(path.read_bytes())
+    asset_version = digest.hexdigest()[:16]
+
+    def version_asset(match):
+        quote, url = match.groups()
+        if url.startswith(('https:', 'http:', '//')):
+            return match[0]
+        return f'{quote}{url}?v={asset_version}{quote}'
+
     for path in files:
         target = destination / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(path, target)
+        if path.suffix in ('.html', '.js') and path.relative_to(root).parts[0] != 'reports':
+            content = re.sub(r'''(['"])([^'"\s]+\.(?:css|js))\1''', version_asset, path.read_text())
+            target.write_text(content)
+        else:
+            shutil.copyfile(path, target)
     result = dict(files=len(files), bytes=total, version=data['version'],
-                  recordCount=data.get('recordCount', len(data.get('records', []))))
+                  assetVersion=asset_version, recordCount=data.get('recordCount', len(data.get('records', []))))
     print(json.dumps(result, indent=2))
     return result
 
