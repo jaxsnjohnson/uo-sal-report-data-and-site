@@ -16,7 +16,11 @@ and source limitations. These are job observations, not unique employee counts.
 The source PDFs distinguish full-time **9-month and 12-month salary rates** from
 **actual fiscal-year pay**. FY 2014–15 through 2018–19 files contain rates; actual
 pay files begin with FY 2020–21. FY 2019–20 is absent from this download.
-No names are automatically joined, pay annualized, or missing reports filled in.
+Search covers all reports by default and shows **26,127 exact-name groups**.
+Expand a name for all its source entries, including entries outside the selected
+filters. Exact-name grouping is a browsing aid, not a verified person identity;
+shared names can refer to different people and spelling changes stay separate.
+No pay is annualized and missing reports are not filled in.
 
 ## Reproduce the archive and import
 
@@ -98,13 +102,14 @@ bytes is never overwritten. Failed downloads are recorded as unavailable.
 - Distinct census salary-rate and fiscal-year actual-pay views; pay-unit filters.
 - Unicode/accent-aware browser worker search, structured fields, phrases,
   exclusions, numeric ranges, sorting, and equivalent main-thread fallback.
-- Batched results and lazy-loaded, source-linked histories.
-- Filtered row counts, medians, classification split, department and title ranks.
+- Batched exact-name results with all source-linked report entries on expansion.
+- Filtered exact-name counts; latest matching entry per name for cards and ranks.
+- Medians and pay comparisons require a single pay measure.
 - Historical median charts with accessible source tables and measure separation.
 - Original report catalog, provenance, checksums, import audit, and explicit
   coverage/error/empty states.
 
-Rows are not verified headcounts. No automatic name merging, pay annualization,
+Name groups are not verified headcounts. No automatic identity merging, pay annualization,
 FTE multiplication, inflation adjustment, or OSU-specific union assumptions are
 used. See [methodology.html](methodology.html).
 

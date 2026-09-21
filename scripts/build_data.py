@@ -123,6 +123,31 @@ def load_observations(document, report):
     return output
 
 
+def global_search_index(rows, reports, version):
+    """Dictionary-encode all observations without losing report or pay provenance."""
+    dictionaries = {key: sorted({row[key] for row in rows}) for key in
+                    ('name', 'title', 'department', 'measure', 'amountDefinition')}
+    lookup = {key: {value: index for index, value in enumerate(values)}
+              for key, values in dictionaries.items()}
+    report_ids = sorted(reports)
+    report_lookup = {value: index for index, value in enumerate(report_ids)}
+    packed = []
+    for row in rows:
+        packed.append([report_lookup[row['reportId']], row['sourceRow'],
+                       lookup['name'][row['name']], lookup['title'][row['title']],
+                       lookup['department'][row['department']], lookup['measure'][row['measure']],
+                       row['amount'], row['rawAmount'], row['rawFte'], row['sourcePage'],
+                       lookup['amountDefinition'][row['amountDefinition']],
+                       row['profileId'] if row['identityBasis'] == 'Reviewed linkage' else None,
+                       row.get('appointmentPercent'), row.get('termOfService'), row['fte']])
+    return dict(schemaVersion=1, format='uo-all-reports-v1', version=version,
+                recordCount=len(rows), exactNameCount=len(dictionaries['name']),
+                columns=['report', 'sourceRow', 'name', 'title', 'department', 'measure',
+                         'amount', 'rawAmount', 'rawFte', 'sourcePage', 'amountDefinition',
+                         'reviewedProfileId', 'appointmentPercent', 'termOfService', 'fte'],
+                reportIds=report_ids, dictionaries=dictionaries, rows=packed)
+
+
 def build(root=ROOT, strict=False, shard_threshold=10000):
     catalog = json.loads((root / 'records.json').read_text())
     imports = json.loads((root / 'report_imports.json').read_text())
@@ -178,14 +203,18 @@ def build(root=ROOT, strict=False, shard_threshold=10000):
             report['dataFile'] = f'data/reports/{report["id"]}.json'
     catalog['reports'] = list(reports.values())
     # Hash all observations and catalog metadata so changes invalidate history caches too.
-    version = sha256(json.dumps([catalog, observations], sort_keys=True, ensure_ascii=False).encode())[:16]
+    version = sha256(json.dumps(['uo-all-reports-v1', catalog, observations], sort_keys=True, ensure_ascii=False).encode())[:16]
     data = dict(schemaVersion=2 if sharded else 1, version=version, status='ready' if observations else 'awaiting-reports',
                 sourceIndex=catalog['indexUrl'], capturedAt=catalog['capturedAt'],
-                measures=MEASURES, reports=list(reports.values()), records=[] if sharded else summary,
-                recordCount=len(summary), sharded=sharded, historyBucketDigits=bucket_digits)
+                measures=MEASURES, reports=list(reports.values()), records=[] if sharded else observations,
+                recordCount=len(summary), sharded=sharded, historyBucketDigits=bucket_digits,
+                exactNameCount=len({r['name'] for r in observations}),
+                searchFile='data/search-index.json' if sharded else None)
     write_json(root / 'data/index.json', data)
-    write_json(root / 'data/search-index.json', dict(version=version, records=[] if sharded else summary,
-        reportFiles={r['id']: r['dataFile'] for r in reports.values() if r.get('dataFile')}))
+    if sharded:
+        write_json(root / 'data/search-index.json', global_search_index(observations, reports, version), compact=True)
+    else:
+        write_json(root / 'data/search-index.json', dict(version=version, records=summary))
     active_files = set()
     if sharded:
         for report_id, rows in summaries_by_report.items():

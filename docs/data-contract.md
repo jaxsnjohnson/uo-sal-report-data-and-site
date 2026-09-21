@@ -67,8 +67,11 @@ the display title joins their lines with spaces.
 - Multiple jobs, identical printed blocks, leave, terminated positions, zero pay,
   and negative adjustments are retained. Zero/negative rates are excluded from
   rate statistics; actual pay includes its zero/negative reported amounts.
-- Names are never automatically joined. Optional `profileKey` linkage requires
-  a documented `review.identityMethod`. This import uses source-row profiles.
+- Person identities are never automatically joined. Optional `profileKey` linkage
+  requires a documented `review.identityMethod`. This import uses source-row
+  profiles. The explorer groups exact names for browsing without changing these
+  identities or dropping any source rows. Accent folding affects search only;
+  it does not merge differently spelled names.
 - `reviewedBy` describes automated checks and representative visual review.
   It does not claim human approval or manual verification of every record.
 
@@ -95,16 +98,23 @@ For more than 10,000 observations:
 - `data/index.json` is a version-2 manifest with `recordCount`, reports, measures,
   `sharded: true`, and an empty `records` array.
 - Each imported report's `dataFile` points to `data/reports/<report-id>.json`.
-  The browser loads only reports for the selected kind/date; each part includes
-  the shared version and report ID.
-- `data/search-index.json` lists report-part paths for independent consumers.
+  These report parts remain available for independent consumers.
+- `data/search-index.json` is the complete, dictionary-encoded all-report index
+  (`uo-all-reports-v1`), including source dates, row/page references, original
+  amounts, FTE, and pay definitions. The browser loads it once, searches every
+  observation, and groups matching results by exact name. Cards show the latest
+  matching entry (same-date ties use source row then ID); expansion shows all
+  entries for that name, including those outside the active filters.
+- `exactNameCount` in the manifest is distinct from the observation count and
+  the reviewed identity count. None of these is a verified employee headcount.
 - `data/aggregates.json` has one entry per report and measure, keeping 9-month
   and 12-month rates out of the same median.
-- `data/people/<two-hex-digits>.json` provides lazy-loaded details in 256 buckets.
+- `data/people/<two-hex-digits>.json` retains source-profile details in 256 buckets.
   Full raw fields remain in normalized files instead of browser downloads.
 - `data/import-audit.json` records import coverage and source checksums.
 
-Small fixtures retain inline records and 16 history buckets. Rebuilds clear stale
-report parts and history buckets. The browser rejects mixed-version parts,
-ignores stale responses, and bounds its part caches. No ingestion step publishes
+Small fixtures retain complete inline records and 16 history buckets. Rebuilds clear stale
+report parts and history buckets. The build contract, catalog, and observations
+all contribute to the cache version. The browser rejects mixed-version or
+incomplete search data and ignores stale search responses. No ingestion step publishes
 or pushes the repository.

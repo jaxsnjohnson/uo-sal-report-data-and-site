@@ -63,6 +63,14 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual((self.root / 'index.html').read_text(), html)
         self.assertEqual((self.root / 'js/app.js').read_text(), script)
 
+    def test_data_only_update_invalidates_the_app_and_manifest_cache(self):
+        first = package(self.root, self.output)
+        manifest = json.loads((self.root / 'data/index.json').read_text())
+        manifest['version'] = 'new-data'
+        (self.root / 'data/index.json').write_text(json.dumps(manifest))
+        second = package(self.root, self.output.parent / 'second-site')
+        self.assertNotEqual(first['assetVersion'], second['assetVersion'])
+
     def test_existing_output_and_symlinks_are_rejected(self):
         self.output.mkdir()
         (self.output / 'keep.txt').write_text('Preserve')

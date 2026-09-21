@@ -49,3 +49,56 @@ test('full-time and flagged controls use the reported fields',()=>{
 test('reverse name sorting does not become salary sorting',()=>{
   assert.deepEqual(searchRecords(records,{...f,sort:'name-desc'}),searchRecords(records,f).reverse());
 });
+
+const globalFilters={...f,kind:'all',period:'all',measure:'all',groupNames:true};
+const history=[
+  {...records[0],id:'old',date:'2009-06-01',sourceRow:1,title:'Archivist'},
+  {...records[0],id:'new',date:'2026-06-30',sourceRow:2,measure:'fiscal_year_pay',kind:'fiscal'},
+  {...records[0],id:'second-job',date:'2026-06-30',sourceRow:3,measure:'fiscal_year_pay',kind:'fiscal'},
+  {...records[0],id:'variant',name:'Test, Zoe',date:'2025-11-01',sourceRow:4},
+  {...records[1],id:'historic-only',date:'2010-06-01',sourceRow:1},
+];
+test('all-report search groups exact names and keeps historical-only names and spelling variants',()=>{
+  assert.deepEqual(new Set(searchRecords(history,globalFilters)),new Set(['new','variant','historic-only']));
+  assert.deepEqual(new Set(searchRecords(history,{...globalFilters,query:'zoe'})),new Set(['new','variant']));
+});
+test('older roles and explicit periods find the latest matching entry, not just the latest job',()=>{
+  assert.deepEqual(searchRecords(history,{...globalFilters,query:'role:archivist'}),['old']);
+  assert.deepEqual(searchRecords(history,{...globalFilters,period:'2009-06-01'}),['old']);
+  assert.deepEqual(searchRecords(history,{...globalFilters,kind:'fiscal'}),['new']);
+  assert.deepEqual(searchRecords(history,{...globalFilters,query:'zoe',measure:'annual_rate',min:'60000',max:'60000'}).length,2);
+});
+test('equal-date representatives use stable source-row then record-ID tie breaks',()=>{
+  const tie=[history[1],{...history[1],id:'aaa'}];
+  assert.deepEqual(searchRecords(tie,globalFilters),['aaa']);
+  assert.deepEqual(searchRecords(tie.reverse(),globalFilters),['aaa']);
+});
+test('mixed-unit pay ranges and sorts require an explicit measure',()=>{
+  for(const filter of [{query:'pay:>50k'},{min:'100'},{max:'90000'},{sort:'pay-desc'}]) {
+    assert.throws(()=>searchRecords(history,{...globalFilters,...filter}),/Choose one pay measure/);
+  }
+});
+
+const datasetSource=await readFile(new URL('../js/dataset.js',import.meta.url),'utf8');
+const {decodeSearchIndex}=await import(`data:text/javascript;base64,${Buffer.from(datasetSource).toString('base64')}`);
+const {execFileSync}=await import('node:child_process');
+const fixture=JSON.parse(execFileSync('python3',[new URL('./browser_fixture.py',import.meta.url).pathname],{encoding:'utf8'}));
+const sharded=JSON.parse(execFileSync('python3',[new URL('./browser_fixture.py',import.meta.url).pathname,'--sharded'],{encoding:'utf8'}));
+test('compact index round-trips every source entry, raw amount, FTE, unit and reviewed linkage',()=>{
+  const decoded=decodeSearchIndex(sharded['data/search-index.json'],sharded['data/index.json']);
+  const expected=new Map(fixture['data/index.json'].records.map(row=>[row.id,row]));
+  assert.equal(decoded.length,expected.size);
+  for(const row of decoded){
+    const source=expected.get(row.id);
+    for(const key of ['name','title','department','classification','kind','date','startDate','measure','amount','rawAmount','usable','payNote','fte','rawFte','sourcePage','sourceRow','identityBasis','amountDefinition']) {
+      assert.deepEqual(row[key],source[key],`${row.id} ${key}`);
+    }
+    assert.equal(row.profileId,source.identityBasis==='Reviewed linkage'?source.profileId:null);
+  }
+});
+test('incomplete or mixed-version indexes never masquerade as a complete all-report search',()=>{
+  const index=sharded['data/search-index.json'],catalog=sharded['data/index.json'];
+  assert.throws(()=>decodeSearchIndex({...index,version:'wrong'},catalog),/changed/);
+  assert.throws(()=>decodeSearchIndex({...index,rows:index.rows.slice(1)},catalog),/incomplete/);
+  assert.throws(()=>decodeSearchIndex({...index,reportIds:['unknown',...index.reportIds.slice(1)]},catalog),/unknown report/);
+});

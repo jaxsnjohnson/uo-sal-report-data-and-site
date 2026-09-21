@@ -1,6 +1,7 @@
 """Generate synthetic browser fixtures in a temporary directory, never public data."""
 import copy
 import json
+import sys
 from test_pipeline import PipelineTests
 from build_data import build
 
@@ -29,7 +30,7 @@ try:
         (fixture.root/path).write_text(json.dumps(other))
     (fixture.root/'records.json').write_text(json.dumps(fixture.catalog))
     (fixture.root/'report_imports.json').write_text(json.dumps(paths))
-    build(fixture.root)
+    build(fixture.root, shard_threshold=0 if "--sharded" in sys.argv else 10000)
     artifacts={str(path.relative_to(fixture.root)):json.loads(path.read_text())
                for path in (fixture.root/'data').rglob('*.json')}
     artifacts['records.json']=json.loads((fixture.root/'records.json').read_text())

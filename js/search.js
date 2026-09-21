@@ -21,7 +21,10 @@ export function searchRecords(records, filters) {
     const field = split < 0 ? '' : raw.slice(0, split).toLowerCase();
     const value = split < 0 ? raw : raw.slice(split + 1);
     if (field && !['name', 'org', 'role', 'type', 'pay'].includes(field)) throw new Error(`Unknown search field “${field}”. See Search tips.`);
-    if (field === 'pay') payMatches(0, value); // Validate even when the population is empty.
+    if (field === 'pay') {
+      if (filters.measure === 'all') throw new Error('Choose one pay measure in Advanced before comparing amounts.');
+      payMatches(0, value); // Validate even when the population is empty.
+    }
     return record => {
       const fields = {name: record.name, org: record.department, role: record.title, type: record.classification};
       const match = field === 'pay' ? record.usable && payMatches(record.amount, value)
@@ -31,13 +34,29 @@ export function searchRecords(records, filters) {
     };
   });
   if (filters.min !== '' && filters.max !== '' && Number(filters.min) > Number(filters.max)) throw new Error('Minimum pay must not exceed maximum pay.');
-  const result = records.filter(row => row.kind === filters.kind && row.date === filters.period && row.measure === filters.measure
+  if (filters.measure === 'all' && (filters.min !== '' || filters.max !== '' || filters.sort.startsWith('pay-'))) {
+    throw new Error('Choose one pay measure in Advanced before comparing amounts.');
+  }
+  let result = records.filter(row => (filters.kind === 'all' || row.kind === filters.kind)
+    && (filters.period === 'all' || row.date === filters.period)
+    && (filters.measure === 'all' || row.measure === filters.measure)
     && (filters.classification === 'all' || row.classification === filters.classification)
     && (!filters.fullTime || row.fte != null && row.fte >= 1)
     && (!filters.flagged || !row.usable)
     && (filters.min === '' || row.usable && row.amount >= Number(filters.min))
     && (filters.max === '' || row.usable && row.amount <= Number(filters.max))
     && predicates.every(predicate => predicate(row)));
+  if (filters.groupNames) {
+    const names = new Map();
+    for (const row of result) {
+      const previous = names.get(row.name);
+      if (!previous || row.date > previous.date || row.date === previous.date &&
+          (row.sourceRow < previous.sourceRow || row.sourceRow === previous.sourceRow && row.id < previous.id)) {
+        names.set(row.name, row);
+      }
+    }
+    result = [...names.values()];
+  }
   result.sort((a, b) => {
     if (filters.sort === 'name-desc') return b.name.localeCompare(a.name) || a.id.localeCompare(b.id);
     if (filters.sort !== 'name') {

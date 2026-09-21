@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "version": "c2d7dda5843f166f",
+  "version": "b18ed4a278f15bbb",
   "status": "ready",
   "sourceIndex": "https://data.uoregon.edu/employees/salary-reports",
   "capturedAt": "2026-09-21T01:36:25+00:00",
@@ -2936,5 +2936,7 @@
   "records": [],
   "recordCount": 353333,
   "sharded": true,
-  "historyBucketDigits": 2
+  "historyBucketDigits": 2,
+  "exactNameCount": 26127,
+  "searchFile": "data/search-index.json"
 }

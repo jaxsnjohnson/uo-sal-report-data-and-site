@@ -94,15 +94,15 @@
 
         <div id="stats-dashboard" class="dashboard">
             <div class="stat-card">
-                <div class="stat-label help-cursor" data-tooltip="Number of source rows in the filtered view, not a verified employee headcount. Identities remain separate unless explicitly linked.">Personnel Records</div>
+                <div class="stat-label help-cursor" data-tooltip="Distinct exact names with at least one matching source entry. Shared names may refer to different people; this is not an employee headcount.">Matching Names</div>
                 <div class="stat-value" id="stat-total">-</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label help-cursor" data-tooltip="Median of usable source-row amounts in the selected report period and pay measure. No annualization or FTE multiplication is applied.">Median Salary</div>
-                <div class="stat-value" id="stat-median">-</div>
+                <div class="stat-label help-cursor" data-tooltip="Median of the latest matching usable entry per exact name, within one selected pay measure. Multiple jobs are not added together.">Median Reported Pay</div>
+                <div class="stat-value" id="stat-median">-</div><div class="stat-sub" id="median-context">Choose a pay measure in Advanced</div>
             </div>
             <div class="stat-card wide">
-                <div class="stat-label help-cursor" data-tooltip="Distribution of UO's classified and unclassified report rows; not verified union membership.">Classification Split</div>
+                <div class="stat-label help-cursor" data-tooltip="Classification of the latest matching entry per name; not verified union membership.">Classification Split</div>
                 <div class="bar-chart-container">
                     <div class="bar-chart">
                         <div id="bar-classified" class="bar-segment classified" style="width: 50%"></div>
@@ -129,7 +129,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-label help-cursor" data-tooltip="Most common job titles in the current filtered set">Top Roles</div>
+                    <div class="stat-label help-cursor" data-tooltip="Job titles on the latest matching entry per exact name">Top Roles</div>
                     <div class="donut-container">
                         <div id="role-donut" class="donut-chart"></div>
                         <div id="role-legend" class="donut-legend"></div>
@@ -138,7 +138,7 @@
             </div>
 
             <div class="stat-card wide full-width-mobile">
-                <div class="stat-label help-cursor" data-tooltip="Departments with the most matching source rows">Top Organizations</div>
+                <div class="stat-label help-cursor" data-tooltip="Departments on the latest matching entry per exact name">Top Organizations</div>
                 <div id="org-leaderboard" class="leaderboard">
                     </div>
             </div>
@@ -158,7 +158,7 @@
 
         <div class="search-container">
             <div class="search-wrapper">
-                <input type="text" id="search" class="search-bar" disabled placeholder="Search name, org... (/)" aria-label="Search salary records">
+                <input type="text" id="search" class="search-bar" disabled placeholder="Search all reports: name, org, role…" aria-label="Search salary records">
                 <button id="clear-search" class="clear-btn hidden" aria-label="Clear search" tabindex="-1">&times;</button>
                 <span id="regex-pill" class="regex-pill hidden" data-tooltip="Regex mode enabled. Use /pattern/flags syntax.">/regex</span>
             </div>
@@ -169,6 +169,7 @@
             <div id="suggested-searches" class="chip-container"></div>
             <details class="dsl-help">
                 <summary>Search syntax</summary>
+                <p>Searches cover all reports by default. Pay ranges and pay sorting require one pay measure in Advanced.</p>
                 <div class="dsl-help-body">
                     <span class="dsl-chip"><code>name:smith</code></span>
                     <span class="dsl-chip"><code>org:engineering</code></span>
@@ -205,11 +206,12 @@
                         <option value="unclassified">Unclassified</option>
                     </select>
 
-                    <select id="measure" class="filter-input" aria-label="Pay measure" style="flex: 2; min-width: 200px;"><option value="annual_rate">Reported annual rate</option></select>
+                    <select id="measure" class="filter-input" aria-label="Pay measure" style="flex: 2; min-width: 200px;"><option value="all">All pay measures</option></select>
                 </div>
 
                 <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap;">
                     <select id="report-series" class="filter-input" aria-label="Report series" style="flex: 1; min-width: 200px;">
+                        <option value="all">All report series</option>
                         <option value="census">Fall census salary rates</option>
                         <option value="fiscal">Fiscal-year actual pay</option>
                         <option value="historical">Earlier personnel lists (rates)</option>
@@ -257,9 +259,9 @@
         <h2 id="info-title">About UO Salary Transparency</h2>
         <p class="subtitle">Democratizing access to public records.</p>
         <div class="modal-section"><h3>Why this exists</h3><p>Public salary reports should be accessible. This independent project makes University of Oregon reports searchable, with original sources attached to every observation.</p></div>
-        <div class="modal-section warning-box"><h3>Data sources and limits</h3><p>The supplied SharePoint archive contains 93 preserved PDFs and 353,333 imported job records. Extraction was checked on every page; individual rows have not all been manually verified. Verify amounts against their linked source PDFs.</p><p>Report rows are not verified headcounts. Nine-month rates, twelve-month rates, and fiscal-year actual pay remain separate.</p></div>
-        <div class="modal-section"><h3>Methodology</h3><ul><li>Original PDFs are preserved with checksums before import.</li><li>Pay stays in its reported units; no annualization or FTE multiplication is guessed.</li><li>Records are linked across reports only through an explicitly reviewed identity key.</li><li>Years of service cannot be calculated without verified hire dates.</li></ul><a href="methodology.html" class="link-btn">Read the Methodology</a></div>
-        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Report Periods &amp; Pay Measures</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Use Advanced to select the report period and pay measure. The report-series selector separates fall census rates, fiscal-year actual pay, and earlier personnel lists. Older fiscal-year personnel lists report rates, not actual earnings.</p><p>Changing period or pay measure changes the population being compared. Full-time means a reported appointment FTE of at least 1.0.</p></div></div>
+        <div class="modal-section warning-box"><h3>Data sources and limits</h3><p>The supplied SharePoint archive contains 93 preserved PDFs and 353,333 imported job records. Extraction was checked on every page; individual rows have not all been manually verified. Verify amounts against their linked source PDFs.</p><p>Exact-name groups are not verified headcounts. Nine-month rates, twelve-month rates, and fiscal-year actual pay remain separate.</p></div>
+        <div class="modal-section"><h3>Methodology</h3><ul><li>Original PDFs are preserved with checksums before import.</li><li>Pay stays in its reported units; no annualization or FTE multiplication is guessed.</li><li>Results group exact names across all reports. This is a name match, not a verified person identity.</li><li>Years of service cannot be calculated without verified hire dates.</li></ul><a href="methodology.html" class="link-btn">Read the Methodology</a></div>
+        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Report Periods &amp; Pay Measures</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Search all report periods together, or use Advanced to narrow by period and pay measure. Expand a name to see all its source entries. The report-series selector separates fall census rates, fiscal-year actual pay, and earlier personnel lists. Older fiscal-year personnel lists report rates, not actual earnings.</p><p>Changing period or pay measure changes the population being compared. Full-time means a reported appointment FTE of at least 1.0.</p></div></div>
         <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Data Archives</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Inspect official links, preserved PDFs, and import status.<br><a href="records.html" class="link-btn">Browse Raw Reports</a></p></div></div>
         <div class="modal-section"><h3>Original Sources</h3><p><a href="https://data.uoregon.edu/employees/salary-reports" target="_blank" rel="noopener">Official UO salary reports</a></p><p>This site has no analytics. Searches run in your browser.</p></div>
         <div class="modal-section"><h3>Keyboard Shortcuts</h3><ul><li><strong>/</strong> Focus search</li><li><strong>Esc</strong> Close this window or clear search</li><li><strong>Enter / Space</strong> Expand a focused record</li></ul></div>

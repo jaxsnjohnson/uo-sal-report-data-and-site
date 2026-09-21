@@ -44,6 +44,7 @@ def package(root, destination):
     # The custom domain's CDN can cache CSS/JS for hours. Version the entry
     # points and their module/worker imports together so new HTML is coherent.
     digest = hashlib.sha256()
+    digest.update(data['version'].encode())
     for path in sorted(files):
         if path.suffix in ('.css', '.js'):
             digest.update(path.relative_to(root).as_posix().encode())
