@@ -25,3 +25,6 @@
 .pay-definition { white-space: normal; font-size: .75rem; font-weight: normal; max-width: 28em; margin-top: 8px; }
 .pay-definition summary { cursor: pointer; color: var(--text-muted); }
 .linked-source { outline: 2px solid var(--primary); outline-offset: -2px; }
+.history table { min-width: 720px; }
+.history th, .history td { padding-right: 16px; }
+.history .date-cell { min-width: 140px; }
