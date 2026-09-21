@@ -12,8 +12,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_DIRS = {'css', 'data', 'icons', 'js', 'reports'}
-PUBLIC_FILES = {'index.html', 'records.html', 'records.json', 'methodology.html'}
+PUBLIC_DIRS = {'analysis', 'css', 'data', 'foia', 'html_reports', 'icons', 'js', 'reports'}
+PUBLIC_FILES = {'index.html', 'records.html', 'records.json', 'inflation.html',
+                'inflation.json', 'upper-middle-mang-report.html', 'robots.txt', 'sitemap.xml'}
 revision = str(time.time_ns())
 
 

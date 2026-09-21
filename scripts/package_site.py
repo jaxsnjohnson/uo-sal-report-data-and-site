@@ -8,9 +8,10 @@ import re
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('index.html', 'records.html', 'methodology.html', 'records.json',
+FILES = ('index.html', 'records.html', 'inflation.html', 'inflation.json',
+         'upper-middle-mang-report.html', 'records.json', 'source-records.json', 'robots.txt', 'sitemap.xml',
          '.nojekyll', 'LICENSE', 'ATTRIBUTION.md')
-DIRECTORIES = ('css', 'icons', 'js', 'data', 'reports/catalog', 'reports/sharepoint')
+DIRECTORIES = ('css', 'icons', 'js', 'data', 'reports/catalog', 'reports/sharepoint', 'reports/provenance')
 
 
 def package(root, destination):
@@ -19,8 +20,8 @@ def package(root, destination):
         raise ValueError('Output must not replace the source checkout or its parent')
     if destination.exists() and any(destination.iterdir()):
         raise ValueError('Output directory must be empty; refusing to overwrite files')
-    data = json.loads((root / 'data/index.json').read_text())
-    if data.get('status') != 'ready' or data.get('recordCount', len(data.get('records', []))) < 1:
+    data = json.loads((root / 'data/manifest.json').read_text())
+    if data.get('recordCount', 0) < 1 or data.get('reportCount', 0) < 1:
         raise ValueError('Cannot publish an empty salary dataset')
     files = [root / name for name in FILES]
     files.extend(root / name for name in ('CNAME', 'reports/sharepoint-manifest.json') if (root / name).is_file())
@@ -37,8 +38,8 @@ def package(root, destination):
     if total >= 1_000_000_000:
         raise ValueError(f'Public package exceeds the 1 GB Pages limit: {total:,} bytes')
     relative = {path.relative_to(root).as_posix() for path in files}
-    for report in data['reports']:
-        for key in ('file', 'dataFile'):
+    for report in json.loads((root / 'source-records.json').read_text())['reports']:
+        for key in ('file',):
             if report.get(key) and report[key] not in relative:
                 raise ValueError(f'Missing published report asset: {report[key]}')
     # The custom domain's CDN can cache CSS/JS for hours. Version the entry
@@ -60,8 +61,9 @@ def package(root, destination):
     for path in files:
         target = destination / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix in ('.html', '.js') and path.relative_to(root).parts[0] != 'reports':
-            content = re.sub(r'''(['"])([^'"\s]+\.(?:css|js))\1''', version_asset, path.read_text())
+        if path.suffix in ('.html', '.js') and path.relative_to(root).parts[0] != 'reports' and path.parent != root / 'js/vendor':
+            content = path.read_text().replace('20260921-uo-copy1', asset_version)
+            content = re.sub(r'''(['"])([^'"\s]+\.(?:css|js))\1''', version_asset, content)
             target.write_text(content)
         else:
             shutil.copyfile(path, target)

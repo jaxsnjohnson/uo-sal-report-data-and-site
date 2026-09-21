@@ -81,7 +81,7 @@ def ingest(zip_path, root=ROOT):
     if old_manifest and old_manifest['archive']['sha256'] != digest:
         raise ValueError('A different ZIP was already ingested; preserve revisions separately')
     stamp = old_manifest['ingestedAt'] if old_manifest else now()
-    catalog_path = root / 'records.json'
+    catalog_path = root / 'source-records.json'
     catalog = json.loads(catalog_path.read_text())
     entries = []
     with zipfile.ZipFile(zip_path) as archive:

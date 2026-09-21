@@ -8,18 +8,21 @@
     <title>UO Salary Explorer</title>
 
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://uo.oregonhigheredsalaries.org">
     <meta property="og:title" content="UO Salary Explorer">
     <meta property="og:description" content="Interactive explorer for University of Oregon personnel salary data, classification stats, and history.">
+    <meta property="og:image" content="https://uo.oregonhigheredsalaries.org/icons/favicon.svg">
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="UO Salary Explorer">
     <meta name="twitter:description" content="Interactive explorer for University of Oregon personnel salary data, classification stats, and history.">
+    <meta name="twitter:image" content="https://uo.oregonhigheredsalaries.org/icons/favicon.svg">
 
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="canonical" href="https://uo.oregonhigheredsalaries.org">
+    <link rel="stylesheet" href="css/styles.css?v=20260921-uo-copy1">
     <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 
-
-
+    <script src="js/vendor/chart.umd.js"></script>
 
     <style>
         .foia-banner {
@@ -69,19 +72,17 @@
             background: #3a3a3a !important;
         }
     </style>
-    <link rel="stylesheet" href="css/uo-theme.css">
-    <link rel="stylesheet" href="css/uo-support.css">
-    <script type="module" src="js/app.js"></script>
 </head>
 <body>
 
-<div class="container" id="main">
-    <p id="capture-import-notice" class="data-quality" role="status"></p>
+<div class="container">
+    <p id="capture-import-notice" class="data-quality" hidden></p>
 
     <div id="foia-notice" class="foia-banner">
         <div class="foia-content">
-            <strong>Archive coverage:</strong> The supplied download includes reports from 2009–2026. FY 2019–20 reports are missing from this collection.
-            <a href="records.html">Browse the original UO salary reports here</a>.
+            <strong>⚠️ Data Record Update:</strong> Browse UO's preserved salary reports from 2009–2026.
+            Salary rates are adjusted for appointment percent; fiscal-year actual pay is available in Advanced.
+            <a href="records.html">View the original source reports here</a>.
         </div>
         <button class="close-banner" onclick="document.getElementById('foia-notice').remove()" aria-label="Dismiss notification">&times;</button>
     </div>
@@ -92,17 +93,17 @@
             <button type="button" id="info-btn" class="icon-btn" aria-label="About this project">?</button>
         </div>
 
-        <div id="stats-dashboard" class="dashboard">
+        <div id="stats-dashboard" class="dashboard hidden">
             <div class="stat-card">
-                <div class="stat-label help-cursor" data-tooltip="Distinct exact names with at least one matching source entry. Shared names may refer to different people; this is not an employee headcount.">Matching Names</div>
+                <div class="stat-label help-cursor" data-tooltip="Number of exact-name groups in the filtered view. Printed names do not verify personal identity.">Personnel Records</div>
                 <div class="stat-value" id="stat-total">-</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label help-cursor" data-tooltip="Median of the latest matching usable entry per exact name, within one selected pay measure. Multiple jobs are not added together.">Median Reported Pay</div>
-                <div class="stat-value" id="stat-median">-</div><div class="stat-sub" id="median-context">Choose a pay measure in Advanced</div>
+                <div class="stat-label help-cursor" data-tooltip="Median appointment-adjusted term pay among visible name groups with usable rates. Nine- and twelve-month terms remain as reported; this is not actual earnings.">Median Salary</div>
+                <div class="stat-value" id="stat-median">-</div>
             </div>
             <div class="stat-card wide">
-                <div class="stat-label help-cursor" data-tooltip="Classification of the latest matching entry per name; not verified union membership.">Classification Split</div>
+                <div class="stat-label help-cursor" data-tooltip="Classification printed on the source report; it does not by itself establish union membership.">Classification Split</div>
                 <div class="bar-chart-container">
                     <div class="bar-chart">
                         <div id="bar-classified" class="bar-segment classified" style="width: 50%"></div>
@@ -117,7 +118,7 @@
 
             <div class="stat-column wide">
                 <div class="stat-card">
-                    <div class="stat-label help-cursor" data-tooltip="Unavailable: the current UO import contract has no verified hire dates.">Years of Service</div>
+                    <div class="stat-label help-cursor" data-tooltip="Hire dates are not supplied in these UO reports.">Years of Service</div>
                     <div class="tenure-chart" id="tenure-chart">
                         </div>
                     <div class="bar-legend">
@@ -129,7 +130,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-label help-cursor" data-tooltip="Job titles on the latest matching entry per exact name">Top Roles</div>
+                    <div class="stat-label help-cursor" data-tooltip="Most common job titles in the current filtered set">Top Roles</div>
                     <div class="donut-container">
                         <div id="role-donut" class="donut-chart"></div>
                         <div id="role-legend" class="donut-legend"></div>
@@ -138,7 +139,7 @@
             </div>
 
             <div class="stat-card wide full-width-mobile">
-                <div class="stat-label help-cursor" data-tooltip="Departments on the latest matching entry per exact name">Top Organizations</div>
+                <div class="stat-label help-cursor" data-tooltip="Organizations (Depts) with the highest personnel count">Top Organizations</div>
                 <div id="org-leaderboard" class="leaderboard">
                     </div>
             </div>
@@ -158,7 +159,7 @@
 
         <div class="search-container">
             <div class="search-wrapper">
-                <input type="text" id="search" class="search-bar" disabled placeholder="Search all reports: name, org, role…" aria-label="Search salary records">
+                <input type="text" id="search" class="search-bar" placeholder="Search name, org... (/)" aria-label="Search personnel">
                 <button id="clear-search" class="clear-btn hidden" aria-label="Clear search" tabindex="-1">&times;</button>
                 <span id="regex-pill" class="regex-pill hidden" data-tooltip="Regex mode enabled. Use /pattern/flags syntax.">/regex</span>
             </div>
@@ -169,21 +170,24 @@
             <div id="suggested-searches" class="chip-container"></div>
             <details class="dsl-help">
                 <summary>Search syntax</summary>
-                <p>Searches cover all reports by default. Pay ranges and pay sorting require one pay measure in Advanced.</p>
                 <div class="dsl-help-body">
                     <span class="dsl-chip"><code>name:smith</code></span>
                     <span class="dsl-chip"><code>org:engineering</code></span>
-                    <span class="dsl-chip"><code>role:"research assistant"</code></span>
+                    <span class="dsl-chip"><code>role:\"research assistant\"</code></span>
                     <span class="dsl-chip"><code>type:classified</code></span>
-                    <span class="dsl-chip"><code>name:johnson</code></span>
+                    <span class="dsl-chip"><code>status:active</code></span>
                     <span class="dsl-chip"><code>pay:60k-90k</code></span>
-                    <span class="dsl-chip"><code>pay:&gt;100k</code></span>
+                    <span class="dsl-chip"><code>sort:salary</code></span>
                     <span class="dsl-chip"><code>-athletics</code></span>
-                    <span class="dsl-chip"><code>org:library</code></span>
+                    <span class="dsl-chip"><code>/^anderson, [jm]/i</code></span>
                 </div>
             </details>
 
             <div id="advanced-search" class="advanced-search hidden">
+                <select id="pay-measure" class="filter-select" aria-label="Pay measure">
+                    <option value="salary_rate">Salary rates × appointment percent</option>
+                    <option value="fiscal_year_pay">Fiscal-year actual pay</option>
+                </select>
                 <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; align-items: stretch;">
                     <div class="salary-inputs">
                         <input type="number" id="salary-min" class="filter-input" placeholder="Min Salary" aria-label="Minimum salary">
@@ -191,11 +195,12 @@
                     </div>
 
                     <select id="sort-order" class="filter-select" aria-label="Sort results" style="flex: 1; min-width: 160px;">
-                        <option value="name">Name (A-Z)</option>
+                        <option value="name-asc">Name (A-Z)</option>
                         <option value="name-desc">Name (Z-A)</option>
-                        <option value="pay-desc">Highest Salary</option>
-                        <option value="pay-asc">Lowest Salary</option>
-
+                        <option value="salary-desc">Highest Salary</option>
+                        <option value="salary-asc">Lowest Salary</option>
+                        <option value="tenure-desc">Longest Tenure</option>
+                        <option value="tenure-asc">Newest Hires</option>
                     </select>
                 </div>
 
@@ -206,16 +211,15 @@
                         <option value="unclassified">Unclassified</option>
                     </select>
 
-                    <select id="measure" class="filter-input" aria-label="Pay measure" style="flex: 2; min-width: 200px;"><option value="all">All pay measures</option></select>
+                    <input type="text" id="role-filter" class="filter-input" list="role-list" placeholder="Filter by Role..." aria-label="Filter by job role" style="flex: 2; min-width: 200px;">
+                    <datalist id="role-list"></datalist>
                 </div>
 
                 <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap;">
-                    <select id="report-series" class="filter-input" aria-label="Report series" style="flex: 1; min-width: 200px;">
-                        <option value="all">All report series</option>
-                        <option value="census">Fall census salary rates</option>
-                        <option value="fiscal">Fiscal-year actual pay</option>
-                        <option value="historical">Earlier personnel lists (rates)</option>
-                    </select>
+                    <label class="toggle-container" style="display: flex; align-items: center; cursor: pointer; user-select: none; background: #333; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; flex: 1; justify-content: center; min-width: 200px;" data-tooltip="Include names absent from the latest report in this pay series; absence does not establish employment status.">
+                        <input type="checkbox" id="show-inactive" style="margin-right: 8px;">
+                        Show Earlier Records
+                    </label>
 
                     <label class="toggle-container" style="display: flex; align-items: center; cursor: pointer; user-select: none; background: #333; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; flex: 1; justify-content: center; min-width: 200px;" data-tooltip="Only show 1.0 FTE appointments (>= 100% Appt Percent).">
                         <input type="checkbox" id="fte-toggle" style="margin-right: 8px;">
@@ -227,48 +231,174 @@
                         <input type="checkbox" id="data-flags-toggle" style="margin-right: 8px;">
                         Data Flags Only
                     </label>
-                    <div class="exclusions-toggle" data-tooltip="Select a report period. Its source dates are retained.">
-                        <div class="exclusion-title">Report Period</div>
-                        <select id="period" class="filter-select exclusion-select" aria-label="Report period">
-                            <option value="">Loading…</option>
+                    <div class="exclusions-toggle" data-tooltip="Names whose source-report classification changes; these are not verified union exclusions.">
+                        <div class="exclusion-title">Classification Changes</div>
+                        <select id="exclusions-mode" class="filter-select exclusion-select" aria-label="Show classification changes">
+                            <option value="off">Off</option>
+                            <option value="all">On (all time)</option>
+                            <option value="recent">Last 12 months</option>
                         </select>
                     </div>
                 </div>
             </div>
 
         </div>
-        <div class="stats" id="stats-bar" role="status" aria-live="polite">Loading data...</div>
-        <div id="filter-error" class="data-quality" role="alert" hidden></div>
+        <div class="stats" id="stats-bar">Loading data...</div>
         <div id="search-suggestions" class="search-suggestions hidden"></div>
     </div>
 
     <div id="results"></div>
-    <div id="empty-state" class="loader-sentinel" hidden>No imported salary records. <a class="source-report-link" href="records.html">Browse source reports</a>.</div>
-    <div id="scroll-sentinel" class="loader-sentinel" hidden>Loading more...</div>
-    <div id="load-error" class="data-quality" role="alert" hidden></div>
 </div>
 
-
-
+<script src="js/inflation-data.js"></script>
+<script src="js/app.js?v=20260921-uo-copy1"></script>
 
 <div id="custom-tooltip" class="custom-tooltip hidden"></div>
 
-<div id="info-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="info-title">
+<div id="info-modal" class="modal hidden">
     <div class="modal-content">
         <button id="close-modal" class="close" aria-label="Close modal">&times;</button>
-        <h2 id="info-title">About UO Salary Transparency</h2>
+
+        <h2>About UO Salary Transparency</h2>
         <p class="subtitle">Democratizing access to public records.</p>
-        <div class="modal-section"><h3>Why this exists</h3><p>Public salary reports should be accessible. This independent project makes University of Oregon reports searchable, with original sources attached to every observation.</p></div>
-        <div class="modal-section warning-box"><h3>Data sources and limits</h3><p>The supplied SharePoint archive contains 93 preserved PDFs and 353,333 imported job records. Extraction was checked on every page; individual rows have not all been manually verified. Verify amounts against their linked source PDFs.</p><p>Exact-name groups are not verified headcounts. Nine-month rates, twelve-month rates, and fiscal-year actual pay remain separate.</p></div>
-        <div class="modal-section"><h3>Methodology</h3><ul><li>Original PDFs are preserved with checksums before import.</li><li>Pay stays in its reported units; no annualization or FTE multiplication is guessed.</li><li>Results group exact names across all reports. This is a name match, not a verified person identity.</li><li>Years of service cannot be calculated without verified hire dates.</li></ul><a href="methodology.html" class="link-btn">Read the Methodology</a></div>
-        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Report Periods &amp; Pay Measures</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Search all report periods together, or use Advanced to narrow by period and pay measure. Expand a name to see all its source entries. The report-series selector separates fall census rates, fiscal-year actual pay, and earlier personnel lists. Older fiscal-year personnel lists report rates, not actual earnings.</p><p>Changing period or pay measure changes the population being compared. Full-time means a reported appointment FTE of at least 1.0.</p></div></div>
-        <div class="modal-section collapsible"><button class="collapsible-btn" aria-expanded="false"><span class="title">Data Archives</span><span class="icon">▶</span></button><div class="collapsible-content hidden"><p>Inspect official links, preserved PDFs, and import status.<br><a href="records.html" class="link-btn">Browse Raw Reports</a></p></div></div>
-        <div class="modal-section"><h3>Original Sources</h3><p><a href="https://data.uoregon.edu/employees/salary-reports" target="_blank" rel="noopener">Official UO salary reports</a></p><p>This site has no analytics. Searches run in your browser.</p></div>
-        <div class="modal-section"><h3>Keyboard Shortcuts</h3><ul><li><strong>/</strong> Focus search</li><li><strong>Esc</strong> Close this window or clear search</li><li><strong>Enter / Space</strong> Expand a focused record</li></ul></div>
-        <p class="modal-footer">A project by Jax SN Johnson. Independent of the University of Oregon.</p>
+
+        <div class="modal-section">
+            <h3>Why this exists</h3>
+            <p>
+                Public records should be truly public—not just available, but <strong>accessible</strong>.
+                This project is a civic hacking experiment designed to liberate data from static PDFs
+                and make it searchable, analyzable, and transparent for the entire community.
+            </p>
+        </div>
+
+        <div class="modal-section warning-box">
+            <h3>⚠️ Data Disclaimer</h3>
+            <p>
+                This data is parsed automatically from <a href="https://data.uoregon.edu/employees/salary-reports" target="_blank">official UO salary reports</a>, preserved as original PDFs.
+                While we strive for 100% accuracy, the OCR conversion process can occasionally result in errors.
+            </p>
+            <p>
+                <strong>Note:</strong> Report coverage and pay definitions vary by period. Salary rates are not actual earnings.
+                Name changes may not be tracked across different reports. Always refer to official documentation for official purposes.
+            </p>
+        </div>
+
+        <div class="modal-section">
+            <h3>Methodology</h3>
+            <ul>
+                <li>PDF salary reports are converted to text, then parsed using deterministic rules.</li>
+                <li>Report entries are grouped into dated histories, with original job details and source links preserved.</li>
+                <li>Exact printed names group records for browsing. Shared names and spelling changes can make histories incomplete or ambiguous; these are not verified identities.</li>
+                <li>Salary totals use the reported full-time rate × appointment percent, summed across jobs. Nine- and twelve-month terms stay as reported; no 12/9 or hourly conversion is applied.</li>
+                <li>Fiscal-year actual pay is a separate view. It is summed as reported, without multiplying by an unknown FTE.</li>
+                <li>Source-report classification changes are observations, not verified union exclusions. Missing hire dates remain unavailable; job start dates are not substituted.</li>
+                <li>Repeated identical source blocks remain visible and are flagged; their snapshot pay is excluded from comparisons pending review.</li>
+                <li>Historical gaps are retained. Each job links to its original PDF page.</li>
+            </ul>
+        </div>
+
+        <div class="modal-section collapsible">
+            <button class="collapsible-btn" aria-expanded="false">
+                <span class="title">Usage Analytics</span>
+                <span class="icon">▶</span>
+            </button>
+            <div class="collapsible-content hidden">
+                <p>No usage analytics provider is configured for this UO copy. Search and filtering run in your browser.</p>
+            </div>
+        </div>
+
+        <div class="modal-section collapsible">
+            <button class="collapsible-btn" aria-expanded="false">
+                <span class="title">Inflation Data</span>
+                <span class="icon">▶</span>
+            </button>
+            <div class="collapsible-content hidden">
+                <p>
+                    Inflation-adjusted views use the CPI-U West region series (All items, not seasonally adjusted; 1982-84=100),
+                    published by the U.S. Bureau of Labor Statistics (series CUUR0400SA0). The copied CPI table is sparse: adjustments use the latest prior observation within 24 months, and uncovered dates appear as gaps.
+                    <br>
+                    <a href="https://data.bls.gov/timeseries/CUUR0400SA0?output_view=data" target="_blank">BLS CPI-U West series table</a> &nbsp;|&nbsp;
+                    <a href="inflation.html" class="link-btn" style="margin-top: 10px;">View CPI Data Table</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-section collapsible">
+            <button class="collapsible-btn" aria-expanded="false">
+                <span class="title">Definitions</span>
+                <span class="icon">▶</span>
+            </button>
+            <div class="collapsible-content hidden">
+                <ul class="def-list">
+                    <li>
+                        <strong>Appt Percent:</strong> The percentage of a full-time appointment (FTE). E.g., 50% means the employee works half-time (0.5 FTE).
+                    </li>
+                    <li>
+                        <strong>Annual Salary Rate:</strong> The full-time rate for the reported nine- or twelve-month term. The explorer calculates appointment-adjusted term pay as Salary Rate × Appt Percent; this is not actual earnings.
+                    </li>
+                    <li>
+                        <strong>Posn-Suff:</strong> These UO reports do not supply persistent job identifiers, so changes between individual job rows in different reports are not inferred.
+                    </li>
+                    <li>
+                        <strong>Adj Service Date:</strong> Not supplied in these UO reports; left unavailable along with First Hired.
+                    </li>
+                    <li>
+                        <strong>Classified:</strong> Records printed in UO’s classified personnel reports.
+                    </li>
+                    <li>
+                        <strong>Unclassified:</strong> Records printed in UO’s unclassified personnel reports; the label does not establish bargaining-unit status.
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="modal-section collapsible">
+            <button class="collapsible-btn" aria-expanded="false">
+                <span class="title">Data Archives</span>
+                <span class="icon">▶</span>
+            </button>
+            <div class="collapsible-content hidden">
+                <p>
+                    Access the raw PDF salary reports used to generate this dataset.
+                    <br>
+                    <a href="records.html" class="link-btn" style="margin-top: 10px;">Browse Raw Reports</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>Contribute</h3>
+            <p>
+                Found a bug? Want to help improve the tool? This project is open source.
+                <br>
+                <a href="https://github.com/jaxsnjohnson/uo-sal-report-data-and-site" target="_blank" class="link-btn">View on GitHub</a>
+                <a href="https://ko-fi.com/X8X7K6PDV" target="_blank" class="link-btn kofi-btn">Support me on Ko-fi</a>
+            </p>
+        </div>
+
+        <div class="modal-section">
+            <h3>Corrections</h3>
+            <p>
+                See a mistake in a record? File a correction request and include the report date and the exact field.
+                <br>
+                <a href="https://github.com/jaxsnjohnson/uo-sal-report-data-and-site/issues/new?title=Data%20correction%20request&body=Person%3A%20%0AReport%20date%3A%20%0AField%3A%20%0AObserved%20value%3A%20%0AExpected%20value%3A%20%0ASource%20link%20or%20notes%3A%20" target="_blank" class="link-btn">Report a Data Issue</a>
+            </p>
+        </div>
+
+        <div class="modal-section">
+            <h3 id="hotkeys-section">Keyboard Shortcuts</h3>
+            <ul>
+                <li><strong>/</strong> Focus search</li>
+                <li><strong>Esc</strong> Clear search / close modal</li>
+                <li><strong>J / K</strong> or <strong>↑ / ↓</strong> Navigate results</li>
+                <li><strong>Enter</strong> Toggle a focused result</li>
+                <li><strong>?</strong> Open this panel</li>
+            </ul>
+        </div>
+
+        <p class="modal-footer">A project by Jax SN Johnson</p>
     </div>
 </div>
-<div id="toast-notification" class="toast" role="status"></div>
-<noscript><p>JavaScript is required for search. <a href="records.html">Browse source reports</a>.</p></noscript>
+
 </body>
 </html>

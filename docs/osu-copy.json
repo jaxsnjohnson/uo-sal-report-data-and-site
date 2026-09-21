@@ -1,0 +1,55 @@
+{
+  "sourceRepository": "https://github.com/jaxsnjohnson/osu-sal-report-data-and-site",
+  "sourceCommit": "776803d9f66db0b7a0cbeae2d20e909fbf37ab26",
+  "sourceWorkingTreeClean": true,
+  "copiedFiles": {
+    "index.html": {
+      "sourceSha256": "d8fade8a83b03e009a7c90cf6cf28ff9e359574599cd65ba5b1c31d68b8f9cb1",
+      "uoSha256": "dabb7e47f7162a7e96ae2b9b72d94f5ec992d031a038e13889702d877d3c4c2b"
+    },
+    "records.html": {
+      "sourceSha256": "3b3f93ba06ba49f1787bedec9d46bb0f29f7c8fad45c6a6500f5cae342312959",
+      "uoSha256": "a881e25aaa610cd12cbfa706062d55b2a76be269841ed8943bad77f3daf0b474"
+    },
+    "inflation.html": {
+      "sourceSha256": "f8983fb3f63c1054fe142c4fbf47391bbae1ec3ecfc7b847982e2763c9575b97",
+      "uoSha256": "00b0bb037d92305af03fede2d2b203d1c5f83914a014f13d7b25b80be0fcbb6f"
+    },
+    "upper-middle-mang-report.html": {
+      "sourceSha256": "0badd306cb572c1efc0eba22e10ff368b8b70e2f9af7b168570f9f516b5e8c40",
+      "uoSha256": "cdb5701736d724f5363529ccf77f3a0f55d697829564fd8e78038357857cd968"
+    },
+    "css/styles.css": {
+      "sourceSha256": "3277884aeda2869f6d6c7f0a1e0c4038b33e4a0bcebc413bf36039a6d06ada90",
+      "uoSha256": "d06e92f5608a38dd9f4cb84d19bda7f0f4b0b9fe21c5914302e837f9d2bdc323"
+    },
+    "js/app.js": {
+      "sourceSha256": "9b9bbb8933f3833890331f2b129b6345af80efd6033c0d5779f2aee3869fceb2",
+      "uoSha256": "f573731fb7ec7112649114eef8f8142d7e396fce7a96bbd593dbe7110f672055"
+    },
+    "js/search-worker.js": {
+      "sourceSha256": "6855698dec640a995547806bfff10d676f077379cd3e0802186aeac4bacc837f",
+      "uoSha256": "efe1d96fde441c74a8355ff43e7b337f28321fafc976bfc55a6d0a5a9e1f44bb"
+    },
+    "js/records.js": {
+      "sourceSha256": "6a201d14d276c4eadd00f54827387c4d22f972609e3e2555a4d363b6f8667c96",
+      "uoSha256": "1a4ae8e74afc3a99d2346942cd2b90add13268124e458d9acfee85494c5c08c1"
+    },
+    "js/inflation-data.js": {
+      "sourceSha256": "7256dad5d545729e8d1e440388c1c0db424517ea909b5465b2bd281974affa4e",
+      "uoSha256": "7256dad5d545729e8d1e440388c1c0db424517ea909b5465b2bd281974affa4e"
+    },
+    "inflation.json": {
+      "sourceSha256": "1fe53d80f37963842e7a31bd6fc9b577fd5070c865dcbce4db3cfe928f288a30",
+      "uoSha256": "1fe53d80f37963842e7a31bd6fc9b577fd5070c865dcbce4db3cfe928f288a30"
+    },
+    "split_data.py": {
+      "sourceSha256": "5a2071c120b569f7187701443ed417fc8ac1adf6e1686b43b24390e0c1ebd8c2",
+      "uoSha256": "4b9a3489aa7290074a00528a0c75ce477dca243789f8d1d1478cbfb4e5957515"
+    },
+    "LICENSE": {
+      "sourceSha256": "3e6d697f5c369075a82695777466bbea951b47baf2751948ee22238ebea539dc",
+      "uoSha256": "3e6d697f5c369075a82695777466bbea951b47baf2751948ee22238ebea539dc"
+    }
+  }
+}

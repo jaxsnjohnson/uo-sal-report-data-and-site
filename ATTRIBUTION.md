@@ -1,18 +1,16 @@
 # Attribution
 
-This project adapts the design and static data architecture of
-[OSU Salary Transparency](https://github.com/jaxsnjohnson/osu-sal-report-data-and-site),
-by Jax Johnson, reviewed at commit `776803d`.
+This site directly copies the HTML, CSS, JavaScript, charts, search worker, and
+static artifact builder from Jax SN Johnson's OSU Salary Transparency project:
+https://github.com/jaxsnjohnson/osu-sal-report-data-and-site
 
-The explorer and archive markup, component structure, and local preview server
-are adapted from that project. `css/styles.css` is preserved byte-for-byte from
-the OSU reference; `css/uo-theme.css` changes colors only. The implementation is
-distributed under GPL-3.0; see LICENSE. UO source reports retain their original
-attribution and are distinct from the software license.
+The UO copy retains the GPL-3.0 license in LICENSE. Its differences are UO branding,
+source-specific normalization, accurately labeled UO data limitations, and the
+replacement of the OSU records-request notice. Original UO PDFs and source
+metadata are retained without alteration. See docs/osu-copy.json for the source
+revision and file checksums.
 
-No OSU salary records, analytics configuration, custom domain, or union-specific
-assumptions are carried into the UO explorer.
-
-The UO web colors are verified against
-[University Communications](https://communications.uoregon.edu/uo-brand/visual-identity/colors):
-UO Green `#007030`, UO Yellow `#FEE11A`, and supporting palette colors.
+Chart.js 4.5.1 is bundled from https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.js
+(the version served by OSU's CDN dependency when copied). Its MIT license is
+preserved in `js/vendor/Chart.js-LICENSE.md`. The UO page can render charts without
+contacting a third-party script host. No analytics provider is configured.

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CPI-U West Region inflation data used for salary adjustments.">
+    <title>CPI-U West Region Inflation Data</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+    <style>
+        :root {
+            --primary: #f2b01e;
+            --accent: #f2b01e;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: bold;
+            margin-bottom: 20px;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .inflation-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+        }
+        .inflation-table-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        .inflation-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .inflation-table th,
+        .inflation-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .inflation-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .inflation-table tr:last-child td {
+            border-bottom: none;
+        }
+        .base-row {
+            background: rgba(254, 225, 26, 0.12);
+        }
+        .base-row td {
+            font-weight: 700;
+        }
+        .note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <a href="index.html" class="back-link">&larr; Back to Dashboard</a>
+        <h1>CPI-U West Region Inflation Data</h1>
+        <p class="subtitle">
+            CPI-U (All items, West region, not seasonally adjusted), 1982-84=100.
+        </p>
+    </div>
+
+    <div class="inflation-card">
+        <div class="stat-label">Source</div>
+        <div class="stat-value" style="font-size: 1rem;">U.S. Bureau of Labor Statistics</div>
+        <div class="stat-sub">
+            Series: CUUR0400SA0 &nbsp;|&nbsp;
+            <a href="https://data.bls.gov/timeseries/CUUR0400SA0?output_view=data" target="_blank" rel="noopener noreferrer">BLS Time Series Table</a>
+        </div>
+    </div>
+
+    <div class="inflation-card">
+        <div class="stat-label">Base Month</div>
+        <div class="stat-value" id="inflation-base">Loading...</div>
+        <div class="stat-sub">Latest month in the CPI series used for adjustments.</div>
+    </div>
+
+    <div class="inflation-table-wrap">
+        <table class="inflation-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>CPI-U Index</th>
+                </tr>
+            </thead>
+            <tbody id="inflation-rows">
+                <tr>
+                    <td colspan="2" class="loader-sentinel">Loading CPI data...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p class="note">Values are pulled from the BLS CPI time series and filtered to the months needed for this project.</p>
+</div>
+
+<script src="js/inflation-data.js"></script>
+<script>
+    (async () => {
+        const rowsEl = document.getElementById('inflation-rows');
+        const baseEl = document.getElementById('inflation-base');
+
+        try {
+            if (window.loadInflationData) {
+                await window.loadInflationData();
+            }
+        } catch (e) {
+            rowsEl.innerHTML = '<tr><td colspan="2" class="loader-sentinel">Failed to load CPI data.</td></tr>';
+            baseEl.textContent = 'Unavailable';
+            return;
+        }
+
+        const map = window.INFLATION_INDEX_BY_MONTH || {};
+        const base = window.INFLATION_BASE_MONTH || 'Unavailable';
+        baseEl.textContent = base;
+
+        const months = Object.keys(map).sort();
+        if (months.length === 0) {
+            rowsEl.innerHTML = '<tr><td colspan="2" class="loader-sentinel">No CPI data available.</td></tr>';
+            return;
+        }
+
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
+        rowsEl.innerHTML = months.map(month => {
+            const value = map[month];
+            const rowClass = month === base ? 'base-row' : '';
+            return `<tr class="${rowClass}"><td>${escapeHtml(month)}</td><td>${value.toFixed(3)}</td></tr>`;
+        }).join('');
+    })();
+</script>
+
+</body>
+</html>

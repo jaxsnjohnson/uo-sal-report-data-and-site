@@ -1,4 +1,8 @@
+# Auto detect text files and perform LF normalization
 * text=auto
-# Preserve original source bytes, including source whitespace.
-reports/** -text -whitespace
-*.pdf binary
+
+# Preserve captured source bytes and their manifest checksums verbatim.
+reports/*/pages/*.html -text -diff -whitespace
+reports/*/salary-reports.html -text -diff -whitespace
+reports/*/report-description.html -text -diff -whitespace
+reports/*/data.json -text

@@ -152,7 +152,7 @@ def parse_report(report, root=ROOT):
 
 
 def process(root=ROOT):
-    catalog = json.loads((root / 'records.json').read_text())
+    catalog = json.loads((root / 'source-records.json').read_text())
     imports, audits = [], []
     for report in catalog['reports']:
         if not report.get('textFile'):

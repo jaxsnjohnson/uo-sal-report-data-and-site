@@ -123,7 +123,7 @@ def main():
     add.add_argument('report_id')
     add.add_argument('pdf', type=Path)
     args = parser.parse_args()
-    catalog_path = ROOT / 'records.json'
+    catalog_path = ROOT / 'source-records.json'
     catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {}
     if args.command == 'discover':
         content = args.from_file.read_bytes() if args.from_file else fetch(INDEX_URL)

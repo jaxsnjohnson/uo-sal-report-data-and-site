@@ -1,12 +1,12 @@
 :root {
-    --primary: #D73F09; /* OSU Orange */
+    --primary: #FEE11A; /* UO Yellow */
     --bg-body: #1a1a1a;
     --bg-card: #2c2c2c;
     --text-main: #f1f1f1;
     --text-muted: #a0a0a0;
     --border: #444444;
-    --success: #2eaea2; /* A brighter teal for visibility on dark */
-    --purple: #a855f7; /* For Classified */
+    --success: #39ba72; /* A brighter teal for visibility on dark */
+    --purple: #2aad69; /* For Classified */
     --diff-pos: #4ade80;
     --diff-neg: #f87171;
 }
@@ -240,7 +240,7 @@ h1 { font-size: 1.5rem; margin-bottom: 10px; color: var(--text-main); }
 }
 
 .search-hit {
-    background: rgba(215, 63, 9, 0.25);
+    background: rgba(254, 225, 26, 0.25);
     color: #ffd8ca;
     border-radius: 3px;
     padding: 0 2px;
@@ -717,7 +717,7 @@ td { padding: 12px 0; border-bottom: 1px solid var(--border); vertical-align: to
     justify-content: center;
     transition: background 0.2s, color 0.2s;
 }
-.icon-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.icon-btn:hover { background: var(--primary); color: #143c2c; border-color: var(--primary); }
 
 /* Section Header */
 .section-header {
@@ -858,7 +858,7 @@ td { padding: 12px 0; border-bottom: 1px solid var(--border); vertical-align: to
 .chart-info-icon:focus-visible {
     border-color: var(--primary);
     color: #fff;
-    background: rgba(215, 63, 9, 0.35);
+    background: rgba(254, 225, 26, 0.35);
     outline: none;
 }
 
@@ -1227,14 +1227,14 @@ input[type=number] { -moz-appearance: textfield; }
     margin-top: 10px;
     padding: 10px 20px;
     background-color: var(--primary);
-    color: #fff !important;
+    color: #143c2c !important;
     border-radius: 8px;
     font-weight: bold;
     text-decoration: none !important;
     transition: background-color 0.2s, transform 0.1s;
 }
 .link-btn:hover {
-    background-color: #b83508;
+    background-color: #d8bd13;
     transform: translateY(-1px);
     text-decoration: none;
 }
@@ -1368,7 +1368,7 @@ input[type=number] { -moz-appearance: textfield; }
 /* Style for the Active Chip */
 .chip.active {
     background-color: var(--primary);
-    color: white;
+    color: #143c2c;
     border-color: var(--primary);
 }
 
@@ -1394,7 +1394,7 @@ input[type=number] { -moz-appearance: textfield; }
 
 .chip.active {
     background-color: var(--primary);
-    color: white;
+    color: #143c2c;
     border-color: var(--primary);
 }
 
@@ -1447,4 +1447,15 @@ input[type=number] { -moz-appearance: textfield; }
 .source-report-link {
     color: var(--primary);
     text-underline-offset: 0.15em;
+}
+
+/* UO source availability and narrow-screen labels; component geometry is OSU's. */
+[hidden] { display: none !important; }
+.tenure-chart[data-unavailable] { background: transparent; overflow: visible; font-size: .75rem; line-height: 12px; }
+#pay-measure { max-width: 100%; }
+@media (max-width: 700px) {
+    #advanced-search { box-sizing: border-box; min-width: 0; }
+    #advanced-search .salary-inputs .filter-input { min-width: 0; width: 0; box-sizing: border-box; }
+    #advanced-search .exclusions-toggle { flex-direction: column; align-items: stretch; min-width: 0; }
+    #advanced-search .exclusion-select { box-sizing: border-box; max-width: 100%; }
 }

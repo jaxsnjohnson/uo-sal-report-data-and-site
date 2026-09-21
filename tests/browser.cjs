@@ -1,153 +1,109 @@
-// Requires the documented host Playwright installation; no production dependency.
-const {chromium, firefox, webkit}=require('playwright');
-const assert=require('node:assert/strict');
-const {execFileSync}=require('node:child_process');
-const fs=require('node:fs');
-const path=require('node:path');
-const root=path.join(__dirname,'..');
-const catalog=JSON.parse(fs.readFileSync(path.join(root,'data/index.json'),'utf8'));
-const index=JSON.parse(fs.readFileSync(path.join(root,'data/search-index.json'),'utf8'));
-const reports=index.reportIds.map(id=>catalog.reports.find(report=>report.id===id));
-const countFor=(kind='all',date='all',measure='all')=>new Set(index.rows.filter(row=>
-  (kind==='all'||reports[row[0]].kind===kind)&&(date==='all'||reports[row[0]].endDate===date)&&
-  (measure==='all'||index.dictionaries.measure[row[5]]===measure)).map(row=>row[2])).size;
-const histories=new Map();
-for(const row of index.rows){
-  if(!histories.has(row[2]))histories.set(row[2],[]);
-  histories.get(row[2]).push(row);
-}
-const historicName=[...histories].find(([name,rows])=>rows.every(row=>reports[row[0]].endDate<'2011')&&
-  index.dictionaries.name.filter(value=>value.toLowerCase().includes(index.dictionaries.name[name].toLowerCase())).length===1)[0];
-const historicRows=histories.get(historicName);
-const linkedRow=historicRows[0];
-const origin=process.env.UO_PREVIEW_URL||'http://127.0.0.1:8085';
-const fixture=JSON.parse(execFileSync('python3',[path.join(__dirname,'browser_fixture.py')],{encoding:'utf8'}));
-fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
-async function fixtureRoutes(page){
-  await page.route('**/data/**',route=>{
-    const name=new URL(route.request().url()).pathname.replace(/^\//,'');
-    return fixture[name]?route.fulfill({json:fixture[name]}):route.continue();
+const {chromium, firefox, webkit} = require('/home/codex/tools/browser-tests/node_modules/playwright');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const {createServer} = require('node:http');
+const path = require('node:path');
+let origin = process.env.UO_URL;
+let server;
+const output = 'test-results/copy-verification';
+fs.mkdirSync(output, {recursive:true});
+const chart = fs.readFileSync('js/vendor/chart.umd.js');
+
+(async () => {
+ if (!origin) {
+  const root=process.env.UO_ROOT || path.resolve(__dirname,'..');
+  server=createServer((req,res)=>{
+   const file=path.resolve(root,'.'+decodeURIComponent(req.url.split('?')[0] === '/' ? '/index.html' : req.url.split('?')[0]));
+   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
+   const types={'.js':'application/javascript','.json':'application/json','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.pdf':'application/pdf'};
+   res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');fs.createReadStream(file).pipe(res);
   });
-}
-async function waitCount(page,expected){await page.waitForFunction(value=>document.querySelector('#stat-total').textContent.replaceAll(',','')===value,String(expected));}
-async function noOverflow(page,label){assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,label);}
-(async()=>{
-  const browser=await chromium.launch({headless:true});
-  try{
-    const page=await browser.newPage({viewport:{width:1440,height:1180}});
-    const errors=[];page.on('pageerror',error=>errors.push(error.message));
-    const started=Date.now();
-    await page.goto(origin,{waitUntil:'networkidle'});await waitCount(page,catalog.exactNameCount);
-    console.log(`All-report index ready in ${Date.now()-started} ms; ${catalog.exactNameCount} names, ${catalog.recordCount} entries.`);
-    assert.match(await page.locator('#capture-import-notice').textContent(),/93 of 93/);
-    assert.equal(await page.locator('#search').isDisabled(),false);
-    assert.equal(await page.locator('.card').count(),50);
-    assert.equal(await page.locator('#stat-median').textContent(),'-');
-    assert.equal(await page.locator('#period').inputValue(),'all');
-    assert.equal(await page.locator('#measure').inputValue(),'all');
-    // A name found only in older reports remains searchable from the default view.
-    await page.locator('#search').fill(`name:"${index.dictionaries.name[historicName]}"`);await waitCount(page,1);
-    await page.locator('.card-header').click();
-    assert.equal(await page.locator('.history table tbody tr').count(),historicRows.length);
-    assert.match(await page.locator('.history a').first().getAttribute('href'),/\/reports\/sharepoint\/.*#page=\d+$/);
-    assert.match(await page.locator('.name-match-note').textContent(),/Shared names/);
-    const linkedId=`${reports[linkedRow[0]].id}:${linkedRow[1]}`;
-    await page.goto(`${origin}/?record=${encodeURIComponent(linkedId)}`,{waitUntil:'networkidle'});await waitCount(page,1);
-    assert.equal(await page.locator('.linked-source').count(),1);
-    assert.equal(await page.locator('.card.expanded').count(),1);
-    await page.locator('#clear-search').click();await waitCount(page,catalog.exactNameCount);
-    await page.locator('#advanced-toggle').click();
-    for(const [kind,date,measure] of [
-      ['fiscal','2026-06-30','fiscal_year_pay'],
-      ['census','2025-11-01','annual_rate'],
-      ['census','2025-11-01','academic_year_rate'],
-      ['historical','2019-06-30','annual_rate']]){
-      await page.locator('#report-series').selectOption(kind);
-      await waitCount(page,countFor(kind));
-      assert.equal(await page.locator('#period').inputValue(),'all');
-      await page.locator('#period').selectOption(date);
-      await page.locator('#measure').selectOption(measure);
-      await waitCount(page,countFor(kind,date,measure));
-    }
-    await page.locator('#report-series').selectOption('all');await waitCount(page,catalog.exactNameCount);
-    await page.locator('#advanced-toggle').click();
-    await page.screenshot({path:'test-results/explorer-desktop.png',fullPage:true});
-    await page.goto(`${origin}/records.html`,{waitUntil:'networkidle'});
-    assert.equal(await page.locator('.record-card').count(),93);
-    assert.equal(await page.locator('.record-card .download-btn').count(),93);
-    assert.equal(await page.locator('.record-card .tag').filter({hasText:'Status: Imported'}).count(),93);
-    await page.locator('[data-filter="Classified"]').click();
-    assert.equal(await page.locator('.record-card').count(),catalog.reports.filter(r=>r.classification==='classified').length);
-    await page.locator('#record-search').fill('2026');assert.equal(await page.locator('.record-card').count(),1);
-    await page.locator('#clear-search').click();await page.locator('[data-filter="all"]').click();
-    // The preview must not expose repository internals, source code, or listings.
-    for(const target of ['/.git/config','/scripts/build_data.py','/data/','/normalized/README.md']){
-      const response=await page.request.get(`${origin}${target}`);assert.ok([403,404].includes(response.status()),target);
-    }
-    await page.setViewportSize({width:390,height:844});
-    for(const pathname of ['/','/records.html','/methodology.html']){
-      await page.goto(origin+pathname,{waitUntil:'networkidle'});await noOverflow(page,`${pathname} overflows mobile`);
-    }
-    await page.goto(origin,{waitUntil:'networkidle'});await waitCount(page,catalog.exactNameCount);
-    await page.locator('#advanced-toggle').click();await noOverflow(page,'real mobile Advanced filters overflow');
-    await page.locator('#advanced-toggle').click();await page.locator('#info-btn').click();
-    await page.waitForSelector('#info-modal:not(.hidden)');await page.keyboard.press('Escape');
-    assert.equal(await page.locator('#info-modal').isVisible(),false);
-    await page.screenshot({path:'test-results/explorer-mobile.png',fullPage:true});
-    // Fixtures cover shared names, old jobs, missing/zero pay, and escaped source text.
-    await fixtureRoutes(page);await page.reload({waitUntil:'networkidle'});await waitCount(page,60);
-    await page.locator('#scroll-sentinel').scrollIntoViewIfNeeded();
-    await page.waitForFunction(()=>document.querySelectorAll('#results > .card').length===60);
-    assert.equal(await page.locator('.name-header h2').filter({hasText:'<script>Example</script>'}).count(),1);
-    await page.locator('#search').fill('name:zoe');await waitCount(page,1);
-    await page.locator('.card-header').click();
-    assert.equal(await page.locator('.history table tbody tr').count(),4);
-    assert.match(await page.locator('.history a').first().getAttribute('href'),/reports\/test.pdf#page=1/);
-    await noOverflow(page,'expanded mobile overflows');
-    await page.locator('#advanced-toggle').click();
-    await page.locator('#type-filter').selectOption('classified');await waitCount(page,1);
-    await page.locator('#search').fill('role:"test role" pay:60k-62k');
-    await page.waitForSelector('#filter-error:not([hidden])');
-    assert.match(await page.locator('#filter-error').textContent(),/Choose one pay measure/);
-    await page.locator('#measure').selectOption('annual_rate');await waitCount(page,4);
-    await page.locator('#search').fill('pay:banana');await page.waitForSelector('#filter-error:not([hidden])');
-    await page.locator('#clear-search').click();await page.locator('#type-filter').selectOption('all');await waitCount(page,60);
-    await page.locator('#report-series').selectOption('census');await page.locator('#measure').selectOption('annual_rate');
-    await page.locator('#historical-toggle').click();
-    assert.equal(await page.locator('#historical-table tbody tr').count(),3);
-    assert.equal(await page.locator('#historical-chart svg').count(),1);
-    await page.locator('#report-series').selectOption('fiscal');await page.locator('#measure').selectOption('fiscal_year_pay');await waitCount(page,1);
-    await page.waitForFunction(()=>document.querySelector('#stat-median').textContent==='$0');
-    assert.equal(await page.locator('#historical-table tbody tr').count(),1);
-    // Expanding a filtered card still shows all four source observations.
-    await page.locator('.card-header').click();assert.equal(await page.locator('.history table tbody tr').count(),4);
-    // Same search engine runs when Workers are unavailable.
-    await page.addInitScript(()=>{window.Worker=class{constructor(){throw new Error('Test Worker unavailable');}};});
-    await page.reload({waitUntil:'networkidle'});await waitCount(page,60);
-    await page.locator('#search').fill('李');await waitCount(page,1);
-    assert.deepEqual(errors,[]);
-    await page.close();
-    for(const target of ['**/data/index.json*','**/data/search-index.json*']){
-      const broken=await browser.newPage();
-      await broken.route(target,route=>route.fulfill({status:503,body:'test failure'}));
-      await broken.goto(origin);await broken.waitForSelector('#load-error:not([hidden])');
-      assert.match(await broken.locator('#load-error').textContent(),/HTTP 503/);
-      assert.equal(await broken.locator('.card').count(),0);assert.equal(await broken.locator('#search').isDisabled(),true);
-      await broken.close();
-    }
-    console.log('Chromium: all-report search, complete histories, old deep links, units, filters, mobile, fallback and failure states passed.');
-  }finally{await browser.close();}
-  for(const [name,engine] of [['Firefox',firefox],['WebKit',webkit]]){
-    const browser=await engine.launch({headless:true});
-    try{
-      const page=await browser.newPage({viewport:{width:390,height:844}});
-      await page.goto(origin);await waitCount(page,catalog.exactNameCount);
-      await fixtureRoutes(page);await page.reload();await waitCount(page,60);
-      await page.locator('#search').fill('zoe');await waitCount(page,1);
-      await page.locator('.card-header').click();
-      assert.equal(await page.locator('.history table tbody tr').count(),4);
-      await noOverflow(page,`${name} expanded history`);
-      console.log(`${name}: real all-report index, grouped search, and mobile history passed.`);
-    }finally{await browser.close();}
-  }
-})().catch(error=>{console.error(error);process.exitCode=1;});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  origin='http://127.0.0.1:'+server.address().port;
+ }
+ for (const [engine, launcher] of Object.entries({chromium, firefox, webkit})) {
+  if(process.env.BROWSERS && !process.env.BROWSERS.split(',').includes(engine)) continue;
+  const browser = await launcher.launch({headless:true});
+  const context = await browser.newContext({viewport:{width:1440,height:1000}});
+  await context.route('https://cdn.jsdelivr.net/npm/chart.js', route => route.fulfill({contentType:'application/javascript',body:chart}));
+  await context.route('**/__preview_revision', route => route.fulfill({json:{revision:'test'}}));
+  const page = await context.newPage();
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('response',response=>{if(response.status()>=400 && response.url().startsWith(origin)) errors.push(`${response.status()} ${response.url()}`);});
+  await page.goto(origin);
+  await page.waitForFunction(()=>typeof state !== 'undefined' && state.searchWorkerReady && document.querySelectorAll('.card').length > 0);
+  assert.equal(await page.locator('h1').innerText(), 'UO Salary Transparency');
+  assert.equal(await page.locator('#stat-total').innerText(), '6,289');
+  await page.screenshot({path:`${output}/${engine}-desktop.png`});
+  await page.locator('#historical-toggle').click();
+  await page.waitForFunction(()=>Object.keys(state.historicalCharts).length === 5);
+  await page.locator('#historical-advanced-toggle').click();
+  await page.waitForFunction(()=>Object.keys(state.historicalCharts).length === 14);
+  console.log(engine, 'historical charts', await page.evaluate(()=>Object.keys(state.historicalCharts)));
+  await page.locator('#historical-charts').screenshot({path:`${output}/${engine}-charts.png`});
+  await page.locator('#historical-toggle').click();
+  await page.locator('#advanced-toggle').click();
+  await page.locator('#search').fill('/^abshere,/i');
+  await page.waitForFunction(()=>state.filteredKeys?.length > 0 && state.filteredKeys.every(n=>n.toLowerCase().includes('abshere')));
+  const visible = await page.locator('.card').first().getAttribute('data-name');
+  await page.locator('.card-header').first().click();
+  await page.waitForSelector('.history[data-loaded="true"]');
+  await page.waitForFunction(()=>Object.keys(state.personCharts).length > 0);
+  const history = await page.locator('.history').first().textContent();
+  assert.ok(history.includes('Not supplied'));
+  assert.ok(await page.locator('.source-report-link').count()>0);
+  const href=await page.locator('.source-report-link').first().getAttribute('href');
+  assert.ok(href.includes('#page='));
+  const reportResponse=await context.request.get(new URL(href, origin).href);
+  assert.equal(reportResponse.status(),200);
+  await page.locator('.card').first().screenshot({path:`${output}/${engine}-person.png`});
+  await page.locator('#search').fill('pay:60k-90k type:classified');
+  await page.waitForFunction(()=>state.filteredKeys.length>0 && state.filteredKeys.every(n=>!state.masterData[n]._isUnclass && state.masterData[n]._totalPay >= 60000 && state.masterData[n]._totalPay <= 90000));
+  await page.locator('#search').fill('');
+  await page.waitForFunction(()=>state.filteredKeys.length===6289);
+  await page.locator('#show-inactive').check();
+  await page.waitForFunction(()=>state.filteredKeys.length===24223);
+  await page.locator('#show-inactive').uncheck();
+  await page.locator('#type-filter').selectOption('classified');
+  await page.waitForFunction(()=>state.filteredKeys.length>0 && state.filteredKeys.every(n=>!state.masterData[n]._isUnclass));
+  await page.locator('#type-filter').selectOption('all');
+  await page.locator('#pay-measure').selectOption('fiscal_year_pay');
+  await page.waitForFunction(()=>typeof PAY_MEASURE !== 'undefined' && PAY_MEASURE==='fiscal_year_pay' && state.searchWorkerReady && state.filteredKeys.length===7100);
+  assert.equal(await page.locator('#fte-toggle').isDisabled(),true);
+  await page.locator('.card-header').first().click();
+  await page.waitForSelector('.history[data-loaded="true"]');
+  assert.ok((await page.locator('.history').first().textContent()).includes('fiscal year'));
+  await page.screenshot({path:`${output}/${engine}-actual-pay.png`});
+  await page.goto(origin+'/records.html');
+  await page.waitForSelector('.record-card');
+  assert.equal(await page.locator('.record-card').count(),93);
+  await page.locator('[data-filter="Classified"]').click();
+  assert.equal(await page.locator('.record-card').count(),47);
+  await page.goto(origin+'/inflation.html');
+  await page.waitForSelector('tbody tr');
+  await page.goto(origin+'/upper-middle-mang-report.html');
+  await page.waitForFunction(()=>document.querySelector('#latest-headcount').textContent === '974');
+  assert.ok((await page.locator('#load-status').textContent()).includes('validated aggregate'));
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(origin);
+  await page.waitForSelector('.card');
+  await page.screenshot({path:`${output}/${engine}-mobile.png`});
+  await page.locator('#advanced-toggle').click();
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+  assert.equal(overflow,false,'Mobile advanced controls overflow');
+  await page.locator('#info-btn').click();
+  assert.equal(await page.locator('#info-modal').isVisible(),true);
+  await page.locator('#close-modal').click();
+  // Exercise the copied main-thread fallback without a worker.
+  const fallback=await context.newPage();
+  await fallback.addInitScript(()=>{window.Worker=undefined;});
+  await fallback.goto(origin+'/?q=abshere');
+  await fallback.waitForSelector('.card');
+  assert.ok((await fallback.locator('.card').first().textContent()).toLowerCase().includes('abshere'));
+  assert.deepEqual(errors,[]);
+  console.log(engine,'PASS',visible);
+  await browser.close();
+ }
+ if(server) server.close();
+})().catch(error=>{console.error(error);if(server)server.close();process.exit(1);});

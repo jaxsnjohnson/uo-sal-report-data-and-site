@@ -1,46 +1,185 @@
-import { $, esc, getJSON, safeURL } from './ui.js';
-import { normalize } from './search.js';
+const escapeHtmlAttr = (value) => {
+    if (value === null || value === undefined) return '';
+    return value.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
 
-let catalog, selected = 'all';
-const cap = value => value[0].toUpperCase()+value.slice(1);
-const seriesLabel = report => report.kind === 'census' ? 'Fall Census' : report.kind === 'fiscal'
-  ? 'Fiscal-Year Actual Pay' : report.sourceSeries === 'FY' ? 'Historical Fiscal-Year Rates' : 'Historical Personnel Rates';
-function render() {
-  const query = normalize($('record-search').value);
-  const reports = catalog.reports.filter(report => (selected === 'all' || cap(report.classification) === selected)
-    && normalize(`${report.title} ${report.endDate} ${report.classification} ${seriesLabel(report)}`).includes(query))
-    .sort((a,b) => b.endDate.localeCompare(a.endDate) || a.classification.localeCompare(b.classification));
-  const list = $('records-list'); list.replaceChildren();
-  if (!reports.length) { list.innerHTML = '<div class="loader-sentinel">No matching records found.</div>'; return; }
-  const years = [...new Set(reports.map(report => report.endDate.slice(0,4)))];
-  for (const year of years) {
-    const heading = document.createElement('h2'); heading.className = 'year-separator'; heading.textContent = year; list.append(heading);
-    const grid = document.createElement('div'); grid.className = 'records-grid';
-    for (const report of reports.filter(report => report.endDate.startsWith(year))) {
-      const card = document.createElement('article'); card.className = 'record-card';
-      const title = `${report.endDate} ${cap(report.classification)} ${seriesLabel(report)}`;
-      const status = report.imported ? 'Imported' : report.file ? 'Archived' : 'PDF needed';
-      card.innerHTML = `<div class="meta-row"><span>${esc(report.endDate)}</span><span>${esc(seriesLabel(report))}</span></div>
-        <h3 class="record-title">${esc(title)}</h3><div class="record-meta"><span class="tag type-${report.classification}">${cap(report.classification)}</span><span class="tag">Status: ${status}</span><span class="tag">Source: UO</span></div>
-        <a href="${safeURL(report.file || report.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="download-btn" aria-label="${report.file ? 'Download PDF' : 'Open official UO report'}: ${esc(title)}">${report.file ? 'Download PDF ⬇' : 'Open UO report ↗'}</a>`;
-      if (report.file) {
-        const details = document.createElement('details'); details.className = 'archive-provenance';
-        details.innerHTML = `<summary>Source details</summary><p>Report ID: ${esc(report.id)}</p><p>${esc(report.periodHeading || report.title)}</p><p>SHA-256: ${esc(report.sha256)}</p>${report.archiveMember ? `<p>Original archive path: ${esc(report.archiveMember)}</p>` : ''}<p>${report.imported ? `${report.rowCount} imported job records` : 'Not yet included in explorer calculations.'}</p><a class="source-report-link" href="${safeURL(report.sourceUrl)}">Official UO link</a>`;
-        card.append(details);
-      }
-      grid.append(card);
+const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return value.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const listContainer = document.getElementById('records-list');
+    const searchInput = document.getElementById('record-search');
+    const clearBtn = document.getElementById('clear-search');
+    const filterChips = document.querySelectorAll('.chip');
+
+    let allRecords = [];
+    let currentFilter = 'all';
+
+    // 1. Fetch Data
+    fetch('records.json?v=20260921-uo-copy1')
+        .then(response => {
+            if (!response.ok) throw new Error("Failed to load records");
+            return response.json();
+        })
+        .then(records => {
+            allRecords = records;
+
+            // Pre-calculate search fields to avoid repetitive string operations in hot loop
+            for (let i = 0; i < allRecords.length; i++) {
+                const rec = allRecords[i];
+                rec._lowTitle = rec.title ? rec.title.toLowerCase() : '';
+                rec._lowType = rec.type ? rec.type.toLowerCase() : '';
+                rec._yearStr = rec.year ? rec.year.toString() : '';
+            }
+
+            // Sort by date descending (newest first)
+            allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+            renderRecords();
+        })
+        .catch(err => {
+            console.error(err);
+            listContainer.innerHTML = `<div class="error">Error loading records: ${escapeHtml(err.message)}</div>`;
+        });
+
+    // 2. Event Listeners
+    searchInput.addEventListener('input', (e) => {
+        toggleClearBtn(e.target.value);
+        renderRecords();
+    });
+
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        toggleClearBtn('');
+        renderRecords();
+        searchInput.focus();
+    });
+
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            filterChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentFilter = chip.getAttribute('data-filter');
+            renderRecords();
+        });
+    });
+
+    function toggleClearBtn(val) {
+        if (val.length > 0) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
     }
-    list.append(grid);
-  }
-}
-try {
-  catalog = await getJSON('records.json');
-  $('record-search').oninput = () => { $('clear-search').classList.toggle('hidden',!$('record-search').value); render(); };
-  $('clear-search').onclick = () => { $('record-search').value = ''; $('clear-search').classList.add('hidden'); render(); $('record-search').focus(); };
-  document.querySelectorAll('[data-filter]').forEach(chip => chip.onclick = () => {
-    selected = chip.dataset.filter;
-    document.querySelectorAll('[data-filter]').forEach(other => other.classList.toggle('active',other === chip));
-    render();
-  });
-  render();
-} catch (error) { $('records-list').innerHTML = `<div class="error" role="alert">Error loading records: ${esc(error.message)}</div>`; }
+
+    // 3. Render Logic
+    function renderRecords() {
+        listContainer.innerHTML = '';
+        const searchTerm = searchInput.value.toLowerCase();
+
+        // Filter first
+        const filtered = allRecords.filter(record => {
+            // Short-circuit: evaluate type first
+            if (currentFilter !== 'all' && record.type !== currentFilter) return false;
+
+            // Fast-path: if no search term, return true immediately
+            if (!searchTerm) return true;
+
+            return record._lowTitle.includes(searchTerm) ||
+                   record._yearStr.includes(searchTerm) ||
+                   record._lowType.includes(searchTerm);
+        });
+
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `<div class="loader-sentinel">No matching records found.</div>`;
+            return;
+        }
+
+        // Group by Year
+        const recordsByYear = {};
+        for (let i = 0; i < filtered.length; i++) {
+            const record = filtered[i];
+            if (!recordsByYear[record.year]) {
+                recordsByYear[record.year] = [];
+            }
+            recordsByYear[record.year].push(record);
+        }
+
+        // Get Years sorted descending
+        const sortedYears = Object.keys(recordsByYear).sort((a, b) => b - a);
+
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < sortedYears.length; i++) {
+            const year = sortedYears[i];
+            // Create Header
+            const yearHeader = document.createElement('h2');
+            yearHeader.className = 'year-separator';
+            yearHeader.textContent = year;
+            fragment.appendChild(yearHeader);
+
+            // Create Grid for this specific year
+            const grid = document.createElement('div');
+            grid.className = 'records-grid';
+
+            const records = recordsByYear[year];
+            for (let j = 0; j < records.length; j++) {
+                grid.appendChild(createRecordCard(records[j]));
+            }
+
+            fragment.appendChild(grid);
+        }
+
+        listContainer.appendChild(fragment);
+    }
+
+    function createRecordCard(record) {
+        const card = document.createElement('article');
+        card.className = 'record-card';
+
+        const typeClass = record.type.toLowerCase() === 'classified' ? 'type-classified' : 'type-unclassified';
+        const title = record.title || record.filename;
+        const isHtml = record.format === 'HTML';
+        const actionLabel = isHtml ? 'Open saved report' : 'Download PDF';
+        const importStatus = record.explorerImported
+            ? 'Included in explorer search; uncertain pay and identity matches are flagged.'
+            : 'Not yet included in explorer calculations.';
+        const captureDetails = record.dateBasis === 'capture'
+            ? `<p>Captured source: ${escapeHtml(record.rowCount)} rows across ${escapeHtml(record.pageCount)} pages. ${importStatus}</p>`
+            : '';
+        const dataLink = record.dataFilename
+            ? `<a href="reports/${escapeHtmlAttr(record.dataFilename)}" class="download-btn" download>Download JSON ⬇</a>`
+            : '';
+
+        card.innerHTML = `
+            <div class="meta-row">
+                <span>${record.dateBasis === 'capture' ? 'Captured ' : ''}${escapeHtml(record.date)}</span>
+                <span>${escapeHtml(record.quarter)}</span>
+            </div>
+            <h3 class="record-title">${escapeHtml(title)}</h3>
+            <div class="record-meta">
+                <span class="tag ${escapeHtmlAttr(typeClass)}">${escapeHtml(record.type)}</span>
+                <span class="tag">Auth: ${escapeHtml(record.author)}</span>
+                <span class="tag">Source: ${escapeHtml(record.source || 'Unknown')}</span>
+            </div>
+            ${captureDetails}
+            <a href="reports/${escapeHtmlAttr(record.filename)}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="download-btn"
+               aria-label="${actionLabel}: ${escapeHtmlAttr(title)}">
+                ${actionLabel} ${isHtml ? '↗' : '⬇'}
+            </a>
+            ${dataLink}
+        `;
+        return card;
+    }
+});

@@ -44,7 +44,7 @@ def check(report):
 
 
 def main():
-    catalog = json.loads((ROOT / 'records.json').read_text())
+    catalog = json.loads((ROOT / 'source-records.json').read_text())
     reports = [r for r in catalog['reports'] if r.get('textFile')]
     with ThreadPoolExecutor(max_workers=4) as pool:
         audits = list(pool.map(check, reports))

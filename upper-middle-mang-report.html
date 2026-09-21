@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upper-Middle Management Report | UO Salaries</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <script src="js/vendor/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg-alt: #0e0e10;
+      --card: #141417;
+    }
+    body { background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04), transparent 35%), radial-gradient(circle at 80% 10%, rgba(255,255,255,0.05), transparent 40%), #0b0b0d; color: #e5e7eb; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 18px 64px; }
+    h1 { margin-bottom: 8px; }
+    .lede { color: #cbd5e1; margin-bottom: 18px; }
+    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #2f2f36; background: #111; color: #a5b4fc; font-size: 12px; letter-spacing: 0.02em; }
+    .card { background: var(--card); border: 1px solid #1f2937; border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 16px 60px rgba(0,0,0,0.2); }
+    .card h2 { margin-top: 0; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .metric { display: flex; flex-direction: column; gap: 6px; }
+    .metric .label { color: #9ca3af; font-size: 13px; }
+    .metric .value { font-size: 26px; font-weight: 700; }
+    canvas { width: 100%; height: 320px; }
+    .explain ol { padding-left: 20px; }
+    .explain li { margin-bottom: 8px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 8px; border: 1px solid #2f3645; background: #11121a; font-size: 12px; }
+    .tag .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    code { background: #111318; padding: 2px 5px; border-radius: 6px; }
+    .list-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .list-table th, .list-table td { border-bottom: 1px solid #1f2937; padding: 8px 6px; text-align: left; }
+    .list-table th { color: #9ca3af; font-weight: 500; }
+    a { color: #93c5fd; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="pill">Upper-Middle Management Analysis</div>
+  <h1>Upper-Middle Management Trends</h1>
+  <p class="lede">Interactive view of UO salary reports (2009–2025) focused on "upper-middle management" titles. Counts and payroll shares are derived from the published salary PDFs parsed in this repo.</p>
+
+  <div class="card grid" id="metric-cards">
+    <div class="metric">
+      <div class="label">Latest snapshot date</div>
+      <div class="value" id="latest-date">-</div>
+    </div>
+    <div class="metric">
+      <div class="label">Upper-middle headcount</div>
+      <div class="value" id="latest-headcount">-</div>
+    </div>
+    <div class="metric">
+      <div class="label">Share of total headcount</div>
+      <div class="value" id="latest-headcount-share">-</div>
+    </div>
+    <div class="metric">
+      <div class="label">Share of payroll</div>
+      <div class="value" id="latest-payroll-share">-</div>
+    </div>
+  </div>
+  <p id="load-status" class="lede">Loading chart data...</p>
+
+  <div class="card">
+    <h2>Headcount over time</h2>
+    <div class="tag"><span class="dot" style="background:#60a5fa"></span> Upper-middle</div>
+    <canvas id="headcountChart" aria-label="Upper-middle headcount over time"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Payroll share over time</h2>
+    <div class="tag"><span class="dot" style="background:#34d399"></span> Upper-middle payroll share</div>
+    <canvas id="payrollChart" aria-label="Upper-middle payroll share over time"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Heuristic used to tag upper-middle management</h2>
+    <p>Titles are tagged client-side using a conservative heuristic on each snapshot job title:</p>
+    <table class="list-table">
+      <thead><tr><th>Included if title contains…</th><th>Excluded if title contains…</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>"Director", "Assistant Director", "Associate Director", "Senior Director", "Manager", "Head", "Chair"</td>
+          <td>"Vice President", "Provost", "Chancellor", "President", "Chief", "Dean"</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><strong>Decision rule:</strong> Each employee can have multiple jobs per snapshot. A person is counted as upper-middle management when at least one title matches the inclusion list and none of their titles match the exclusion list in that same snapshot.</p>
+    <p><strong>Important:</strong> This is a title-text heuristic for analysis, not an official UO HR level or bargaining-unit designation. Payroll share uses the snapshot's calculated pay.</p>
+  </div>
+
+  <div class="card explain">
+    <h2>How the numbers are built</h2>
+    <ol>
+      <li><strong>Source PDFs:</strong> Official UO salary reports (2009–2025) in <code>reports/</code>.</li>
+      <li><strong>Extraction:</strong> <code>convert_data.sh</code> calls <code>pdftotext</code> then a Python parser to produce <code>data.json</code> (per-person timelines).</li>
+      <li><strong>Chunking:</strong> <code>split_data.py</code> creates <code>data/index.json</code>, <code>data/aggregates.json</code>, and bucketed <code>data/people/*.json</code>.</li>
+      <li><strong>This page:</strong> Loads <code>aggregates.json</code> for dates, then streams all <code>data/people/*.json</code>. For each snapshot, it applies the title heuristic above and sums headcount and payroll.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+(async function() {
+  const headcountEl = document.getElementById('latest-headcount');
+  const headcountShareEl = document.getElementById('latest-headcount-share');
+  const payrollShareEl = document.getElementById('latest-payroll-share');
+  const latestDateEl = document.getElementById('latest-date');
+  const statusEl = document.getElementById('load-status');
+
+  const includeRe = /(associate director|assistant director|senior director|director|manager|head|chair)/i;
+  const excludeRe = /(vice president|provost|chancellor|president|chief|dean)/i;
+  const commaSpaceRe = /[,\s]/g;
+
+  try {
+    const aggResp = await fetch('data/aggregates.json');
+    if (!aggResp.ok) throw new Error(`Could not load data/aggregates.json (${aggResp.status})`);
+    const agg = await aggResp.json();
+    const series = (agg.roleGroupConcentration?.points || []).map(point => ({
+      date: point.date, upper: point.roleGroup, total: point.total,
+      payrollUpper: point.payrollRoleGroup, payrollTotal: point.payrollTotal
+    }));
+    const dates = series.map(point => point.date);
+    const latestDate = dates[dates.length - 1];
+    const seriesByDate = Object.fromEntries(series.map(point => [point.date, point]));
+
+    // Prepare arrays for charts
+    const labels = dates;
+    const upperHead = series.map(s => s.upper);
+    const sharePay = series.map(s => s.payrollTotal ? (s.payrollUpper / s.payrollTotal) * 100 : 0);
+
+    const latest = seriesByDate[latestDate];
+    latestDateEl.textContent = latestDate;
+    headcountEl.textContent = latest.upper.toLocaleString();
+    headcountShareEl.textContent = latest.total ? `${(latest.upper / latest.total * 100).toFixed(1)}%` : '-';
+    payrollShareEl.textContent = latest.payrollTotal ? `${(latest.payrollUpper / latest.payrollTotal * 100).toFixed(1)}%` : '-';
+    statusEl.textContent = `Loaded ${labels.length} snapshots from the validated aggregate data.`;
+
+    const ctx1 = document.getElementById('headcountChart').getContext('2d');
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Upper-middle headcount',
+          data: upperHead,
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96,165,250,0.2)',
+          tension: 0.2,
+          fill: true,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y.toLocaleString()} roles` } } },
+        scales: { y: { beginAtZero: true, grid: { color: '#1f2937' } }, x: { grid: { display: false } } },
+      }
+    });
+
+    const ctx2 = document.getElementById('payrollChart').getContext('2d');
+    new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Payroll share %',
+          data: sharePay,
+          borderColor: '#34d399',
+          backgroundColor: 'rgba(52,211,153,0.15)',
+          tension: 0.2,
+          fill: true,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y.toFixed(2)}%` } } },
+        scales: { y: { beginAtZero: true, max: Math.max(...sharePay, 5) + 2, grid: { color: '#1f2937' } }, x: { grid: { display: false } } },
+      }
+    });
+  } catch (err) {
+    statusEl.textContent = `Data failed to load: ${err.message}. Serve this directory over HTTP (example: python3 -m http.server 8000).`;
+  }
+})();
+</script>
+</body>
+</html>
