@@ -79,6 +79,9 @@ async function waitCount(page,expected){await page.waitForFunction(value=>docume
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${pathname} overflows mobile`);
     }
     await page.goto(origin,{waitUntil:'networkidle'});
+    await page.locator('#advanced-toggle').click();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'real mobile Advanced filters overflow');
+    await page.locator('#advanced-toggle').click();
     await page.locator('#info-btn').click();
     await page.waitForSelector('#info-modal:not(.hidden)');
     await page.keyboard.press('Escape');

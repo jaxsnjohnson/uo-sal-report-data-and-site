@@ -13,3 +13,9 @@
 .document-page li { margin-bottom: 8px; }
 .document-page .inline-note { padding: 12px; border-left: 3px solid var(--primary); }
 .record-card .archive-provenance { font-size: .75rem; color: var(--text-muted); overflow-wrap: anywhere; }
+#advanced-search { box-sizing: border-box; }
+#advanced-search .salary-inputs .filter-input { min-width: 0; width: 0; box-sizing: border-box; }
+@media (max-width: 700px) {
+  #advanced-search .exclusions-toggle { flex-direction: column; align-items: stretch; min-width: 0; }
+  #advanced-search .exclusion-select { box-sizing: border-box; }
+}
