@@ -1,0 +1,4 @@
+* text=auto
+# Preserve original source bytes, including source whitespace.
+reports/** -text -whitespace
+*.pdf binary

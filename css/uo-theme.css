@@ -1,0 +1,31 @@
+/* Color overrides only. Layout lives in the unchanged OSU styles.css.
+ * UO web palette: https://communications.uoregon.edu/uo-brand/visual-identity/colors
+ */
+:root {
+    --primary: #FEE11A; /* UO Yellow: visible on the original dark background. */
+    --purple: #007030; /* UO Green: classified segment. */
+    --success: #8ABB40; /* UO Moss: salary text. */
+    --uo-green: #007030;
+    --uo-yellow: #FEE11A;
+    --uo-evergreen: #004D30;
+    --uo-fern: #489D46;
+    --uo-moss: #8ABB40;
+}
+
+.link-btn, .chip.active { color: #000 !important; }
+.link-btn:hover { background-color: #8ABB40; }
+.icon-btn:hover { background: #007030; color: #fff; }
+.download-btn:hover { color: #000; }
+.modal-content a, .document-page a { color: #FEE11A; }
+.warning-box a { color: #533f03; }
+.tag.type-classified { border-color: #007030; color: #E8F1D9; background: #004D30; }
+.tag.type-unclassified { border-color: #FEE11A; color: #FFF7C6; background: #3D4546; }
+.chart-info-icon:hover, .chart-info-icon:focus-visible { background: #007030; }
+.tenure-seg.t1 { background-color: #E8F1D9; }
+.tenure-seg.t2 { background-color: #8ABB40; }
+.tenure-seg.t3 { background-color: #489D46; }
+.tenure-seg.t4 { background-color: #007030; }
+#tenure-chart + .bar-legend .legend-item:nth-child(1) .dot { background: #E8F1D9 !important; }
+#tenure-chart + .bar-legend .legend-item:nth-child(2) .dot { background: #8ABB40 !important; }
+#tenure-chart + .bar-legend .legend-item:nth-child(3) .dot { background: #489D46 !important; }
+#tenure-chart + .bar-legend .legend-item:nth-child(4) .dot { background: #007030 !important; }

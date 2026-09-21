@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Archive of University of Oregon personnel salary reports.">
+    <title>UO Salary Reports Archive</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+    <style>
+        /* Keep page specific styles, but add these for the new controls */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: bold;
+            margin-bottom: 20px;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        /* The grid class is now used for the INNER groups, not the main container */
+        .records-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px; /* Reduced slightly since header provides spacing */
+        }
+
+        .record-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .record-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-color: var(--primary);
+        }
+
+        .record-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-main);
+            margin: 0;
+        }
+
+        .record-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #333;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .tag.type-classified {
+            border-color: var(--purple);
+            color: #e9d5ff;
+            background: rgba(168, 85, 247, 0.1);
+        }
+
+        .tag.type-unclassified {
+            border-color: var(--primary);
+            color: #fdba74;
+            background: rgba(215, 63, 9, 0.1);
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background: #333;
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background 0.2s;
+            margin-top: auto;
+            border: 1px solid var(--border);
+        }
+
+        .download-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+    <link rel="stylesheet" href="css/uo-theme.css">
+    <link rel="stylesheet" href="css/uo-support.css">
+</head>
+<body>
+
+<div class="container" id="main">
+    <div class="header">
+        <a href="index.html" class="back-link">&larr; Back to Dashboard</a>
+        <h1>UO Salary Reports Archive</h1>
+        <p class="subtitle" style="margin-bottom: 20px;">
+            Browse official UO salary reports, including November census rates and fiscal-year actual pay.
+            Sources are labeled when they are not yet archived or included in the explorer.
+        </p>
+
+        <div class="controls-area" style="margin-bottom: 30px;">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" id="record-search" class="search-bar" placeholder="Search by title or year..." aria-label="Search source reports">
+                    <button id="clear-search" class="clear-btn hidden" aria-label="Clear search">&times;</button>
+                </div>
+            </div>
+
+            <div class="chip-container">
+                <button class="chip active" data-filter="all">All Types</button>
+                <button class="chip" data-filter="Classified">Classified</button>
+                <button class="chip" data-filter="Unclassified">Unclassified</button>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+    </div>
+
+    <div id="records-list">
+        <div class="loader-sentinel">Loading records...</div>
+    </div>
+</div>
+
+<script type="module" src="js/records.js"></script>
+
+</body>
+</html>
